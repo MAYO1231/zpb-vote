@@ -44,6 +44,21 @@
       50% { opacity: 0.5; }
     }
 
+    @keyframes goldPulse {
+      0%, 100% { text-shadow: 0 0 40px rgba(232,184,75,0.35), 0 0 80px rgba(232,184,75,0.15); }
+      50%       { text-shadow: 0 0 70px rgba(232,184,75,0.65), 0 0 130px rgba(232,184,75,0.3); }
+    }
+
+    @keyframes trophyFloat {
+      0%, 100% { transform: translateY(0);   filter: drop-shadow(0 0 24px rgba(232,184,75,0.45)); }
+      50%       { transform: translateY(-8px); filter: drop-shadow(0 0 44px rgba(232,184,75,0.75)); }
+    }
+
+    @keyframes glowIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
     * { box-sizing: border-box; }
 
     html, body {
@@ -111,7 +126,9 @@
     .app-shell {
       min-height: 100vh;
       background:
-        radial-gradient(circle at 15% 0%, rgba(232, 184, 75, 0.08), transparent 28%),
+        radial-gradient(ellipse at 75% 0%,   rgba(232,184,75,0.10) 0%, transparent 45%),
+        radial-gradient(ellipse at 10% 100%, rgba(201,64,64,0.05)  0%, transparent 35%),
+        radial-gradient(circle  at 15% 0%,   rgba(232,184,75,0.05), transparent 28%),
         linear-gradient(180deg, #080810 0%, #0b0b14 100%);
     }
 
@@ -459,11 +476,24 @@
 
     .vote-option {
       width: 100%;
-      min-height: 86px;
-      border-radius: 8px;
-      font-size: 24px;
+      min-height: 100px;
+      border-radius: 14px;
+      font-size: 26px;
       font-weight: 900;
       word-break: break-word;
+      font-family: "Noto Serif TC", serif;
+      letter-spacing: 0.04em;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn.vote-p1:hover {
+      background: #1c2d48;
+      box-shadow: 0 0 28px rgba(232,184,75,0.22), 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .btn.red.vote-option:hover {
+      background: #4a1f1f;
+      box-shadow: 0 0 28px rgba(201,64,64,0.22), 0 4px 16px rgba(0,0,0,0.4);
     }
 
     .score-big {
@@ -568,6 +598,7 @@
       font-size: clamp(56px, 11vw, 110px);
       font-weight: 900;
       line-height: 1;
+      animation: glowIn 0.4s ease forwards;
     }
     .display-p1 .display-player-name,
     .display-p1 .display-vote-count { color: var(--gold); }
@@ -623,7 +654,7 @@
     .display-trophy {
       font-size: clamp(64px, 14vw, 130px);
       line-height: 1;
-      filter: drop-shadow(0 0 32px rgba(232,184,75,0.6));
+      animation: trophyFloat 2.8s ease-in-out infinite;
     }
 
     .display-winner-name {
@@ -631,9 +662,9 @@
       font-size: clamp(48px, 11vw, 108px);
       font-weight: 900;
       color: var(--gold);
-      text-shadow: 0 0 48px rgba(232,184,75,0.45);
       line-height: 1.1;
       word-break: break-word;
+      animation: goldPulse 2.8s ease-in-out infinite, glowIn 0.6s ease forwards;
     }
 
     .display-winner-sub {
@@ -641,6 +672,15 @@
       color: var(--muted);
       letter-spacing: 0.18em;
       margin-top: 4px;
+    }
+
+    .display-winner-shell::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 40%, rgba(232,184,75,0.13), transparent 60%);
+      pointer-events: none;
+      animation: pulse 3s ease-in-out infinite;
     }
 
     .display-final-shell {
