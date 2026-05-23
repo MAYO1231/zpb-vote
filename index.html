@@ -1,0 +1,1409 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>職棒傳承</title>
+
+  <!-- ★ 使用者設定區 — 只需修改這裡 ★ -->
+  <script>
+    const FIREBASE_CONFIG = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+  </script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #080810; --surface: #0f0f1c; --card: #14141f; --border: #1e1e2e;
+      --gold: #e8b84b; --gold-dim: #a07a1a;
+      --red: #c94040; --green: #2d7a4a;
+      --text: #e8e4dc; --muted: #5a5870; --dim: #2e2c3f;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Noto Sans TC", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button {
+      min-height: 42px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0b0b15;
+      color: var(--text);
+      padding: 12px 13px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--gold-dim);
+    }
+
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+    .pulse { animation: pulse 2s ease-in-out infinite; }
+
+    .banner {
+      display: none;
+      width: 100%;
+      background: #5a1616;
+      color: #ffe4e4;
+      border-bottom: 1px solid #8f2828;
+      padding: 12px 18px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .banner.is-visible { display: block; }
+
+    .app-shell {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(232, 184, 75, 0.08), transparent 28%),
+        linear-gradient(180deg, #080810 0%, #0b0b14 100%);
+    }
+
+    .host-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      background: rgba(15, 15, 28, 0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      min-width: 0;
+      font-family: "Noto Serif TC", serif;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: 0;
+      line-height: 1.1;
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-family: "Noto Sans TC", sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .reset-btn {
+      flex: 0 0 auto;
+      border: 1px solid #4a1515;
+      border-radius: 8px;
+      background: transparent;
+      color: #e47979;
+      padding: 7px 11px;
+      min-height: 34px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tabs {
+      position: sticky;
+      top: 64px;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: rgba(15, 15, 28, 0.95);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 12px 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .tab-btn.is-active {
+      color: var(--gold);
+      box-shadow: inset 0 -2px 0 var(--gold);
+    }
+
+    .host-main {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .panel { display: none; }
+    .panel.is-active { display: block; }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .card.gold-border,
+    .leader-item.gold-border {
+      border-color: var(--gold-dim);
+      background: #171403;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      color: var(--gold);
+      font-family: "Noto Serif TC", serif;
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 10px 13px;
+      color: var(--text);
+      background: var(--dim);
+      font-weight: 700;
+    }
+
+    .btn.primary {
+      background: #1a3d1a;
+      border-color: #2a6a2a;
+      color: #8ce08c;
+    }
+
+    .btn.blue {
+      background: #17263f;
+      border-color: #284a7a;
+      color: #91bfff;
+    }
+
+    .btn.red {
+      background: #3d1a1a;
+      border-color: #6a2a2a;
+      color: #e89898;
+    }
+
+    .btn.vote-p1 {
+      background: #151d30;
+      border-color: var(--gold);
+      border-width: 2px;
+    }
+
+    .btn.gold {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #0a0a10;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .btn.full { width: 100%; }
+
+    .qr-card {
+      text-align: center;
+    }
+
+    .qr-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 220px;
+      min-height: 220px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 8px;
+    }
+
+    .round-item,
+    .person-item,
+    .leader-item,
+    .finished-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 13px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .round-name {
+      color: var(--gold);
+      font-weight: 900;
+      font-family: "Noto Serif TC", serif;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: var(--dim);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .badge.open {
+      background: #17351f;
+      color: #83d996;
+    }
+
+    .badge.closed {
+      background: #342a10;
+      color: var(--gold);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .current-round {
+      text-align: center;
+      padding: 22px 16px;
+    }
+
+    .current-round h2,
+    .participant-title {
+      margin: 0 0 12px;
+      color: var(--gold);
+      font-family: "Noto Serif TC", serif;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .versus {
+      font-size: clamp(22px, 5vw, 34px);
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .versus span {
+      color: var(--muted);
+      font-size: 0.56em;
+      font-weight: 700;
+      margin: 0 8px;
+    }
+
+    .vote-chart-shell {
+      min-height: 285px;
+    }
+
+    .chart-frame {
+      position: relative;
+      width: min(360px, 100%);
+      height: 240px;
+      margin: 8px auto 0;
+    }
+
+    .empty-state {
+      display: flex;
+      min-height: 180px;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 18px;
+      text-align: center;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .participant-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .participant-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .participant-main {
+      width: min(620px, 100%);
+      margin: 0 auto;
+      padding: 28px 18px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .join-card {
+      width: min(420px, calc(100vw - 36px));
+      margin: auto;
+    }
+
+    .join-card h1 {
+      margin: 0 0 20px;
+      color: var(--gold);
+      font-family: "Noto Serif TC", serif;
+      font-size: 34px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .vote-options {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .vote-option {
+      width: 100%;
+      min-height: 86px;
+      border-radius: 8px;
+      font-size: 24px;
+      font-weight: 900;
+      word-break: break-word;
+    }
+
+    .score-big {
+      color: var(--gold);
+      font-size: 64px;
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .leader-item.me {
+      border-color: var(--gold-dim);
+      background: #171403;
+    }
+
+    .rank {
+      width: 42px;
+      flex: 0 0 42px;
+      color: var(--gold);
+      font-weight: 900;
+    }
+
+    .name {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-weight: 700;
+    }
+
+    .score {
+      flex: 0 0 auto;
+      color: var(--gold);
+      font-weight: 900;
+    }
+
+    @media (max-width: 720px) {
+      .grid,
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .host-header {
+        align-items: flex-start;
+      }
+
+      .tabs {
+        top: 62px;
+      }
+
+      .tab-btn {
+        font-size: 13px;
+        padding-inline: 2px;
+      }
+
+      .host-main {
+        padding: 14px;
+      }
+
+      .row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .row .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="config-banner" class="banner">⚠️ 請先填入 Firebase 設定</div>
+  <div id="app" class="app-shell"></div>
+
+  <script>
+    (() => {
+      const DEFAULT_GAME = { phase: "setup", currentRoundIdx: 0, rounds: [] };
+      const TABS = [
+        ["setup", "設定"],
+        ["game", "遊戲"],
+        ["roster", "名單"],
+        ["leaderboard", "排名"]
+      ];
+
+      let db = null;
+      let game = DEFAULT_GAME;
+      let participants = [];
+      let predictions = [];
+      let hostTab = "setup";
+      let hostMounted = false;
+      let participantMounted = false;
+      let participantName = getNameParam();
+      let gamePanelSignature = "";
+      let setupPanelSignature = "";
+      let voteChart = null;
+      let voteChartRoundId = "";
+      let qrSignature = "";
+
+      const app = document.getElementById("app");
+      const banner = document.getElementById("config-banner");
+
+      function getMode() {
+        return new URLSearchParams(location.search).get("mode");
+      }
+
+      function getNameParam() {
+        const n = new URLSearchParams(location.search).get("name");
+        return n ? decodeURIComponent(n) : "";
+      }
+
+      function pushNameToURL(name) {
+        const url = new URL(location.href);
+        url.searchParams.set("mode", "join");
+        url.searchParams.set("name", encodeURIComponent(name));
+        history.pushState({}, "", url.toString());
+      }
+
+      function isFirebaseConfigured() {
+        return FIREBASE_CONFIG &&
+          typeof FIREBASE_CONFIG.databaseURL === "string" &&
+          FIREBASE_CONFIG.databaseURL.length > 0 &&
+          !FIREBASE_CONFIG.databaseURL.includes("YOUR_PROJECT");
+      }
+
+      function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        })[ch]);
+      }
+
+      function firebaseKeyIsValid(value) {
+        return value && !/[.#$/\[\]]/.test(value);
+      }
+
+      function normalizeRounds(rawRounds) {
+        if (Array.isArray(rawRounds)) {
+          return rawRounds.filter(Boolean);
+        }
+        if (rawRounds && typeof rawRounds === "object") {
+          return Object.keys(rawRounds)
+            .sort((a, b) => Number(a) - Number(b))
+            .map((key) => rawRounds[key])
+            .filter(Boolean);
+        }
+        return [];
+      }
+
+      function normalizeGame(rawGame) {
+        if (!rawGame || typeof rawGame !== "object") {
+          return { ...DEFAULT_GAME, rounds: [] };
+        }
+        return {
+          phase: rawGame.phase || "setup",
+          currentRoundIdx: Number(rawGame.currentRoundIdx) || 0,
+          rounds: normalizeRounds(rawGame.rounds).map((round) => ({
+            id: round.id,
+            label: round.label,
+            p1: round.p1,
+            p2: round.p2,
+            status: round.status || "pending",
+            winner: round.winner ?? null
+          }))
+        };
+      }
+
+      function getCurrentRound() {
+        if (game.phase !== "active") return null;
+        if (game.currentRoundIdx < 0 || game.currentRoundIdx >= game.rounds.length) return null;
+        return game.rounds[game.currentRoundIdx];
+      }
+
+      function getPredictionsForRound(roundId) {
+        return predictions.filter((prediction) => prediction.roundId === roundId);
+      }
+
+      function predictionKey(name, roundId) {
+        return `${name}_${roundId}`;
+      }
+
+      function currentParticipantPrediction(round) {
+        if (!participantName || !round) return null;
+        return predictions.find((prediction) => prediction.name === participantName && prediction.roundId === round.id) || null;
+      }
+
+      function closedRounds() {
+        return game.rounds.filter((round) => round.status === "closed" && round.winner);
+      }
+
+      function correctCountFor(name) {
+        return predictions.filter((prediction) => {
+          if (prediction.name !== name) return false;
+          const round = game.rounds.find((item) => item.id === prediction.roundId);
+          return round && round.status === "closed" && round.winner === prediction.pick;
+        }).length;
+      }
+
+      function getRankings() {
+        const rows = participants.map((person) => ({
+          name: person.name,
+          correct: correctCountFor(person.name)
+        })).sort((a, b) => {
+          if (b.correct !== a.correct) return b.correct - a.correct;
+          return a.name.localeCompare(b.name, "zh-Hant");
+        });
+
+        let lastScore = null;
+        let lastRank = 0;
+        rows.forEach((row, index) => {
+          if (row.correct !== lastScore) {
+            lastRank = index + 1;
+            lastScore = row.correct;
+          }
+          row.rank = lastRank;
+        });
+        return rows;
+      }
+
+      function rankLabel(rank) {
+        if (rank === 1) return "🥇";
+        if (rank === 2) return "🥈";
+        if (rank === 3) return "🥉";
+        return String(rank);
+      }
+
+      function getJoinURL() {
+        const url = new URL(location.href);
+        url.searchParams.set("mode", "join");
+        url.searchParams.delete("name");
+        return url.toString();
+      }
+
+      function setVisible(element, visible) {
+        if (!element) return;
+        element.style.display = visible ? "" : "none";
+      }
+
+      function render() {
+        if (getMode() === "join") {
+          renderParticipant();
+        } else {
+          renderHost();
+        }
+      }
+
+      function renderHost() {
+        participantMounted = false;
+        if (!hostMounted) {
+          hostMounted = true;
+          gamePanelSignature = "";
+          setupPanelSignature = "";
+          app.innerHTML = `
+            <div class="host-header">
+              <div class="brand">⚔️ 職棒傳承<small>盲眼劍客猜勝負</small></div>
+              <button class="reset-btn" type="button" data-action="reset">重置</button>
+            </div>
+            <div class="tabs">
+              ${TABS.map(([key, label]) => `<button class="tab-btn" type="button" data-tab="${key}">${label}</button>`).join("")}
+            </div>
+            <main class="host-main">
+              ${TABS.map(([key]) => `<section id="host-panel-${key}" class="panel fade-in"></section>`).join("")}
+            </main>
+          `;
+        }
+
+        updateHostTabs();
+        updateSetupPanel();
+        updateGamePanel();
+        updateRosterPanel();
+        updateLeaderboardPanel();
+      }
+
+      function updateHostTabs() {
+        document.querySelectorAll("[data-tab]").forEach((button) => {
+          button.classList.toggle("is-active", button.dataset.tab === hostTab);
+        });
+        TABS.forEach(([key]) => {
+          const panel = document.getElementById(`host-panel-${key}`);
+          if (panel) panel.classList.toggle("is-active", key === hostTab);
+        });
+      }
+
+      function updateSetupPanel() {
+        const panel = document.getElementById("host-panel-setup");
+        if (!panel) return;
+
+        const sig = `${game.phase}|${game.rounds.map(r => r.id).join(",")}`;
+        if (sig === setupPanelSignature) return;
+        setupPanelSignature = sig;
+
+        panel.innerHTML = `
+          <div class="stack">
+            <div class="grid">
+              <div class="card qr-card">
+                <h2 class="section-title">參與 QR Code</h2>
+                <div id="qr-box" class="qr-box"></div>
+                <div style="margin-top: 12px;">
+                  <button class="btn" type="button" data-action="open-qr">↗ 在新視窗顯示 QR Code</button>
+                </div>
+              </div>
+
+              <form id="round-form" class="card stack">
+                <h2 class="section-title">新增場次</h2>
+                <input id="round-label" type="text" placeholder="場次名稱（選填）" ${game.phase !== "setup" ? "disabled" : ""}>
+                <div class="form-row">
+                  <input id="round-p1" type="text" placeholder="選手 A" ${game.phase !== "setup" ? "disabled" : ""}>
+                  <input id="round-p2" type="text" placeholder="選手 B" ${game.phase !== "setup" ? "disabled" : ""}>
+                </div>
+                <button class="btn full" type="submit" ${game.phase !== "setup" ? "disabled" : ""}>新增場次</button>
+                ${game.phase !== "setup" ? `<div class="hint">遊戲進行中 — 切換到遊戲分頁操作</div>` : ""}
+              </form>
+            </div>
+
+            <div class="card stack">
+              <div class="row">
+                <h2 class="section-title" style="margin:0;">已新增場次</h2>
+                ${game.phase === "setup" && game.rounds.length > 0
+                  ? `<button class="btn primary" type="button" data-action="start-game">▶ 開始遊戲</button>`
+                  : ""}
+              </div>
+              ${game.rounds.length === 0
+                ? `<div class="hint">尚未新增場次。至少新增 1 場後即可開始遊戲。</div>`
+                : `<div class="stack">${game.rounds.map((round) => `
+                    <div class="round-item">
+                      <div>
+                        <div class="round-name">${escapeHTML(round.label)}</div>
+                        <div class="hint">${escapeHTML(round.p1)} vs ${escapeHTML(round.p2)}</div>
+                      </div>
+                      ${game.phase === "setup" ? `<button class="btn ghost" type="button" data-action="remove-round" data-round-id="${escapeHTML(round.id)}">移除</button>` : ""}
+                    </div>
+                  `).join("")}</div>`}
+            </div>
+          </div>
+        `;
+
+        renderQR(getJoinURL(), 200);
+      }
+
+      function statusBadge(round) {
+        if (!round) return "";
+        if (round.status === "open") return `<span class="badge open"><span class="dot"></span>投票開放中</span>`;
+        if (round.status === "closed") return `<span class="badge closed">勝者：${escapeHTML(round.winner || "")}</span>`;
+        return `<span class="badge"><span class="dot pulse"></span>投票尚未開放</span>`;
+      }
+
+      function updateGamePanel() {
+        const panel = document.getElementById("host-panel-game");
+        if (!panel) return;
+
+        const round = getCurrentRound();
+        const signature = round && round.status === "open"
+          ? `${game.phase}|${game.currentRoundIdx}|${round.id}|${round.status}`
+          : `${game.phase}|${game.currentRoundIdx}|${round ? round.id : ""}|${round ? round.status : ""}|${round ? round.winner : ""}|${game.rounds.length}`;
+
+        if (signature !== gamePanelSignature) {
+          gamePanelSignature = signature;
+          destroyVoteChart();
+
+          if (game.phase === "setup") {
+            panel.innerHTML = `<div class="empty-state">請先在設定頁開始遊戲</div>`;
+          } else if (game.phase === "finished") {
+            panel.innerHTML = `<div class="empty-state">🏁 遊戲已結束，查看排名頁</div>${completedRoundsHTML()}`;
+          } else if (!round) {
+            panel.innerHTML = `<div class="empty-state">找不到目前場次，請重置後重新開始。</div>`;
+          } else {
+            panel.innerHTML = `
+              <div class="stack">
+                <div class="card current-round">
+                  <h2>${escapeHTML(round.label)}</h2>
+                  <div class="versus">${escapeHTML(round.p1)} <span>vs</span> ${escapeHTML(round.p2)}</div>
+                  <div style="margin-top: 14px;">${statusBadge(round)}</div>
+                </div>
+
+                ${round.status === "pending" ? `
+                  <button class="btn blue full" type="button" data-action="open-round">🗳 開啟投票</button>
+                ` : ""}
+
+                ${round.status === "open" ? `
+                  <div class="card vote-chart-shell">
+                    <div id="vote-count" class="hint" style="text-align:center;"></div>
+                    <div id="vote-empty" class="empty-state" style="min-height:220px;">等待第一票...</div>
+                    <div id="chart-frame" class="chart-frame" style="display:none;">
+                      <canvas id="vote-chart"></canvas>
+                    </div>
+                  </div>
+                  <div class="card stack">
+                    <div class="hint" style="text-align:center;">標記本場勝者</div>
+                    <div class="form-row">
+                      <button class="btn primary" type="button" data-action="mark-winner" data-winner="${escapeHTML(round.p1)}">🏆 ${escapeHTML(round.p1)}</button>
+                      <button class="btn red" type="button" data-action="mark-winner" data-winner="${escapeHTML(round.p2)}">🏆 ${escapeHTML(round.p2)}</button>
+                    </div>
+                  </div>
+                ` : ""}
+
+                <div id="completed-rounds">${completedRoundsHTML()}</div>
+              </div>
+            `;
+          }
+        }
+
+        updateOpenRoundStats();
+      }
+
+      function completedRoundsHTML() {
+        const completed = game.rounds.filter((round) => round.status === "closed");
+        if (completed.length === 0) return "";
+        return `
+          <div class="card stack">
+            <h2 class="section-title">已完成場次</h2>
+            ${completed.map((round) => `
+              <div class="finished-item">
+                <div>
+                  <div class="round-name">${escapeHTML(round.label)}</div>
+                  <div class="hint">${escapeHTML(round.p1)} vs ${escapeHTML(round.p2)}</div>
+                </div>
+                <div class="score">勝者：${escapeHTML(round.winner || "")}</div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function updateOpenRoundStats() {
+        const round = getCurrentRound();
+        if (!round || round.status !== "open") {
+          destroyVoteChart();
+          return;
+        }
+
+        const roundPredictions = getPredictionsForRound(round.id);
+        const voteCount = document.getElementById("vote-count");
+        if (voteCount) {
+          voteCount.textContent = `${roundPredictions.length} / ${participants.length} 人已投票`;
+        }
+
+        if (hostTab !== "game") return;
+        updateVoteChart(round, roundPredictions);
+      }
+
+      function updateVoteChart(round, roundPredictions) {
+        const p1Votes = roundPredictions.filter((prediction) => prediction.pick === round.p1).length;
+        const p2Votes = roundPredictions.filter((prediction) => prediction.pick === round.p2).length;
+        const total = p1Votes + p2Votes;
+        const empty = document.getElementById("vote-empty");
+        const frame = document.getElementById("chart-frame");
+        const canvas = document.getElementById("vote-chart");
+
+        setVisible(empty, total === 0);
+        setVisible(frame, total > 0);
+        if (!canvas || total === 0) return;
+
+        if (!voteChart || voteChartRoundId !== round.id || voteChart.canvas !== canvas) {
+          voteChartRoundId = round.id;
+          voteChart = new Chart(canvas, {
+            type: "doughnut",
+            data: {
+              labels: [round.p1, round.p2],
+              datasets: [{
+                data: [p1Votes, p2Votes],
+                backgroundColor: ["#e8b84b", "#c94040"],
+                borderColor: "#14141f",
+                borderWidth: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: "58%",
+              plugins: {
+                legend: {
+                  position: "bottom",
+                  labels: { color: "#e8e4dc", font: { family: "Noto Sans TC", size: 13 } }
+                },
+                tooltip: {
+                  backgroundColor: "#1a1a2a",
+                  borderColor: "#1e1e2e",
+                  borderWidth: 1,
+                  titleFont: { family: "Noto Sans TC" },
+                  bodyFont: { family: "Noto Sans TC" }
+                }
+              }
+            }
+          });
+          return;
+        }
+
+        voteChart.data.labels = [round.p1, round.p2];
+        voteChart.data.datasets[0].data = [p1Votes, p2Votes];
+        voteChart.update();
+      }
+
+      function destroyVoteChart() {
+        if (voteChart) {
+          voteChart.destroy();
+          voteChart = null;
+          voteChartRoundId = "";
+        }
+      }
+
+      function updateRosterPanel() {
+        const panel = document.getElementById("host-panel-roster");
+        if (!panel) return;
+
+        const round = getCurrentRound();
+        panel.innerHTML = `
+          <div class="card stack">
+            <div class="row">
+              <h2 class="section-title" style="margin:0;">參與名單</h2>
+              <div class="hint">${participants.length} 人</div>
+            </div>
+            ${participants.length === 0
+              ? `<div class="hint">尚無參與者加入。</div>`
+              : participants.map((person) => {
+                  const voted = round && round.status === "open"
+                    ? predictions.some((prediction) => prediction.name === person.name && prediction.roundId === round.id)
+                    : false;
+                  return `
+                    <div class="person-item">
+                      <div class="name">${escapeHTML(person.name)}</div>
+                      ${round && round.status === "open"
+                        ? `<div class="score">${voted ? "✓ 已投票" : "○ 待投票"}</div>`
+                        : ""}
+                    </div>
+                  `;
+                }).join("")}
+          </div>
+        `;
+      }
+
+      function updateLeaderboardPanel() {
+        const panel = document.getElementById("host-panel-leaderboard");
+        if (!panel) return;
+
+        const rankings = getRankings();
+        const total = closedRounds().length;
+        panel.innerHTML = `
+          <div class="card stack">
+            <div class="row">
+              <h2 class="section-title" style="margin:0;">排名</h2>
+              <div class="hint">${game.phase === "finished" ? "最終排名" : "目前即時統計"} · 已結束 ${total} 場</div>
+            </div>
+            ${rankings.length === 0
+              ? `<div class="hint">尚無參與者。</div>`
+              : rankings.map((row) => `
+                  <div class="leader-item ${row.rank === 1 && game.phase === "finished" ? "gold-border" : ""}">
+                    <div class="rank">${rankLabel(row.rank)}</div>
+                    <div class="name" style="flex:1;">${escapeHTML(row.name)}</div>
+                    <div class="score">${row.correct} 場</div>
+                  </div>
+                `).join("")}
+          </div>
+        `;
+      }
+
+      function renderParticipant() {
+        hostMounted = false;
+        destroyVoteChart();
+        participantName = getNameParam();
+
+        if (!participantName) {
+          if (!participantMounted || !document.getElementById("join-name")) {
+            participantMounted = true;
+            app.innerHTML = `
+              <div class="participant-page fade-in">
+                <main class="participant-main">
+                  <form id="join-form" class="card join-card stack">
+                    <h1>⚔️ 職棒傳承</h1>
+                    <input id="join-name" type="text" placeholder="輸入你的名字" autocomplete="name" autofocus>
+                    <button class="btn gold full" type="submit">加入 →</button>
+                  </form>
+                </main>
+              </div>
+            `;
+            const input = document.getElementById("join-name");
+            if (input) input.focus();
+          }
+          return;
+        }
+
+        participantMounted = true;
+        const round = getCurrentRound();
+        const myCorrect = correctCountFor(participantName);
+        const totalClosed = closedRounds().length;
+
+        app.innerHTML = `
+          <div class="participant-page fade-in">
+            <header class="participant-header">
+              <div class="brand">⚔️ 職棒傳承<small>${escapeHTML(participantName)}</small></div>
+              <div class="score">${myCorrect}<span class="muted">/${totalClosed}</span></div>
+            </header>
+            <main class="participant-main">
+              ${participantContent(round)}
+            </main>
+          </div>
+        `;
+      }
+
+      function participantContent(round) {
+        if (game.phase === "setup") {
+          return `<div class="empty-state pulse">等待主持人開始遊戲...</div>`;
+        }
+
+        if (game.phase === "finished") {
+          return participantFinishedHTML();
+        }
+
+        if (!round) {
+          return `<div class="empty-state">等待下一場...</div>`;
+        }
+
+        const myPrediction = currentParticipantPrediction(round);
+
+        if (round.status === "pending") {
+          return `
+            <div class="card current-round">
+              <h2>${escapeHTML(round.label)}</h2>
+              <div class="versus">${escapeHTML(round.p1)} <span>vs</span> ${escapeHTML(round.p2)}</div>
+              <div class="hint pulse" style="margin-top:18px;">等待主持人開啟投票...</div>
+            </div>
+          `;
+        }
+
+        if (round.status === "open" && !myPrediction) {
+          return `
+            <div class="card stack">
+              <div style="text-align:center;">
+                <div class="hint">你覺得誰會贏？</div>
+                <h2 class="participant-title">${escapeHTML(round.label)}</h2>
+              </div>
+              <div class="vote-options">
+                <button class="btn vote-option vote-p1" type="button" data-action="vote" data-pick="${escapeHTML(round.p1)}">${escapeHTML(round.p1)}</button>
+                <button class="btn red vote-option" type="button" data-action="vote" data-pick="${escapeHTML(round.p2)}">${escapeHTML(round.p2)}</button>
+              </div>
+            </div>
+          `;
+        }
+
+        if (round.status === "open" && myPrediction) {
+          return `
+            <div class="card current-round">
+              <div class="hint">已投給：</div>
+              <h2>${escapeHTML(myPrediction.pick)}</h2>
+              <div class="hint pulse">等待結果...</div>
+            </div>
+          `;
+        }
+
+        if (round.status === "closed") {
+          const myPrediction = currentParticipantPrediction(round);
+          const resultText = myPrediction
+            ? (myPrediction.pick === round.winner ? "🎯 猜對了！" : "😅 猜錯了")
+            : "📋 本場未投票";
+          return `
+            <div class="card current-round">
+              <div class="participant-title">${resultText}</div>
+              <div class="hint">本場勝者</div>
+              <h2>${escapeHTML(round.winner || "")}</h2>
+              <div class="hint pulse">等待下一場...</div>
+            </div>
+          `;
+        }
+
+        return `<div class="empty-state">等待更新...</div>`;
+      }
+
+      function participantFinishedHTML() {
+        const rankings = getRankings();
+        const me = rankings.find((row) => row.name === participantName);
+        const total = game.rounds.length;
+        const myCorrect = correctCountFor(participantName);
+        return `
+          <div class="stack">
+            <div class="card">
+              <div class="hint" style="text-align:center;">個人成績</div>
+              <div class="score-big">${myCorrect}<span class="muted" style="font-size:24px;">/${total}</span></div>
+              <div class="hint" style="text-align:center;">第 ${me ? me.rank : "-"} 名</div>
+            </div>
+            <div class="card stack">
+              <h2 class="section-title">完整排名</h2>
+              ${rankings.map((row) => `
+                <div class="leader-item ${row.name === participantName ? "me" : ""}">
+                  <div class="rank">${rankLabel(row.rank)}</div>
+                  <div class="name" style="flex:1;">${escapeHTML(row.name)}</div>
+                  <div class="score">${row.correct} 場</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderQR(url, size) {
+        const container = document.getElementById("qr-box");
+        if (!container || typeof QRCode === "undefined") return;
+        const signature = `${url}|${size}|${container.childElementCount}`;
+        if (qrSignature === signature && container.childElementCount > 0) return;
+        qrSignature = signature;
+        container.innerHTML = "";
+        new QRCode(container, {
+          text: url,
+          width: size,
+          height: size,
+          colorDark: "#111",
+          colorLight: "#fff"
+        });
+      }
+
+      function openQRWindow() {
+        const joinURL = getJoinURL();
+        const qrWindow = window.open("", "_blank", "width=420,height=520");
+        if (!qrWindow) {
+          alert("請在瀏覽器允許此頁面開啟彈出視窗後再試");
+          return;
+        }
+        qrWindow.document.write(`
+          <!doctype html>
+          <html lang="zh-Hant">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>職棒傳承 QR Code</title>
+            <style>
+              * { box-sizing: border-box; }
+              body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 18px;
+                padding: 24px;
+                background: #fff;
+                color: #111;
+                font-family: sans-serif;
+                text-align: center;
+              }
+              #qr { padding: 12px; border: 1px solid #eee; }
+              h1 { margin: 0; font-size: 26px; }
+              p { margin: 0; color: #555; overflow-wrap: anywhere; }
+            </style>
+          </head>
+          <body>
+            <h1>職棒傳承</h1>
+            <div id="qr"></div>
+            <p>${escapeHTML(joinURL)}</p>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+            <script>
+              window.onload = function () {
+                new QRCode(document.getElementById("qr"), {
+                  text: ${JSON.stringify(joinURL)},
+                  width: 280,
+                  height: 280,
+                  colorDark: "#111",
+                  colorLight: "#fff"
+                });
+              };
+            <\/script>
+          </body>
+          </html>
+        `);
+        qrWindow.document.close();
+      }
+
+      async function saveGame(nextGame) {
+        await db.ref("/game").set({
+          phase: nextGame.phase,
+          currentRoundIdx: nextGame.currentRoundIdx,
+          rounds: nextGame.rounds
+        });
+      }
+
+      async function addRound() {
+        if (game.phase !== "setup") return;
+        const labelInput = document.getElementById("round-label");
+        const p1Input = document.getElementById("round-p1");
+        const p2Input = document.getElementById("round-p2");
+        const p1 = p1Input ? p1Input.value.trim() : "";
+        const p2 = p2Input ? p2Input.value.trim() : "";
+        if (!p1 || !p2) {
+          alert("請填入選手 A 與選手 B");
+          return;
+        }
+
+        const label = labelInput && labelInput.value.trim()
+          ? labelInput.value.trim()
+          : `第 ${game.rounds.length + 1} 場`;
+        const round = {
+          id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          label,
+          p1,
+          p2,
+          status: "pending",
+          winner: null
+        };
+        await saveGame({ ...game, rounds: [...game.rounds, round] });
+      }
+
+      async function removeRound(roundId) {
+        if (game.phase !== "setup") return;
+        await saveGame({ ...game, rounds: game.rounds.filter((round) => round.id !== roundId) });
+      }
+
+      async function startGame() {
+        if (game.phase !== "setup" || game.rounds.length === 0) return;
+        hostTab = "game";
+        await db.ref("/game").update({ phase: "active", currentRoundIdx: 0 });
+      }
+
+      async function openRound() {
+        const round = getCurrentRound();
+        if (!round || round.status !== "pending") return;
+        const rounds = game.rounds.map((item, index) => index === game.currentRoundIdx ? { ...item, status: "open" } : item);
+        await saveGame({ ...game, rounds });
+      }
+
+      async function markWinner(winner) {
+        const round = getCurrentRound();
+        if (!round || round.status !== "open") return;
+        const rounds = game.rounds.map((item, index) => (
+          index === game.currentRoundIdx ? { ...item, status: "closed", winner } : item
+        ));
+        const nextIdx = game.currentRoundIdx + 1;
+        const phase = nextIdx >= rounds.length ? "finished" : "active";
+        if (phase === "finished") hostTab = "leaderboard";
+        await saveGame({ phase, currentRoundIdx: nextIdx, rounds });
+      }
+
+      async function resetGame() {
+        destroyVoteChart();
+        hostTab = "setup";
+        await db.ref().update({
+          game: null,
+          participants: null,
+          predictions: null
+        });
+      }
+
+      async function joinParticipant() {
+        const input = document.getElementById("join-name");
+        const name = input ? input.value.trim() : "";
+        if (!name) {
+          alert("請輸入名字");
+          return;
+        }
+        if (!firebaseKeyIsValid(name)) {
+          alert("名字不能包含 . # $ / [ ]");
+          return;
+        }
+        await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now() });
+        participantName = name;
+        pushNameToURL(name);
+        renderParticipant();
+      }
+
+      async function vote(pick) {
+        const round = getCurrentRound();
+        if (!round || round.status !== "open" || !participantName) return;
+        if (!firebaseKeyIsValid(participantName)) {
+          alert("名字不能包含 . # $ / [ ]");
+          return;
+        }
+        const payload = { name: participantName, roundId: round.id, pick };
+        const key = predictionKey(participantName, round.id);
+        predictions = predictions.filter((prediction) => !(prediction.name === participantName && prediction.roundId === round.id));
+        predictions.push(payload);
+        renderParticipant();
+        await db.ref(`/predictions/${key}`).set(payload);
+      }
+
+      document.addEventListener("click", (event) => {
+        const tabButton = event.target.closest("[data-tab]");
+        if (tabButton) {
+          hostTab = tabButton.dataset.tab;
+          updateHostTabs();
+          updateOpenRoundStats();
+          return;
+        }
+
+        const actionButton = event.target.closest("[data-action]");
+        if (!actionButton) return;
+        const action = actionButton.dataset.action;
+
+        if (action === "open-qr") openQRWindow();
+        if (action === "remove-round") removeRound(actionButton.dataset.roundId);
+        if (action === "start-game") startGame();
+        if (action === "open-round") openRound();
+        if (action === "mark-winner") markWinner(actionButton.dataset.winner);
+        if (action === "reset") resetGame();
+        if (action === "vote") vote(actionButton.dataset.pick);
+      });
+
+      document.addEventListener("submit", (event) => {
+        if (event.target.id === "round-form") {
+          event.preventDefault();
+          addRound();
+        }
+        if (event.target.id === "join-form") {
+          event.preventDefault();
+          joinParticipant();
+        }
+      });
+
+      window.addEventListener("popstate", () => {
+        participantName = getNameParam();
+        hostMounted = false;
+        participantMounted = false;
+        render();
+      });
+
+      if (!isFirebaseConfigured()) {
+        banner.classList.add("is-visible");
+        app.innerHTML = "";
+        return;
+      }
+
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.database();
+
+      db.ref("/game").on("value", (snap) => {
+        game = normalizeGame(snap.val());
+        render();
+      });
+
+      db.ref("/participants").on("value", (snap) => {
+        const value = snap.val() || {};
+        participants = Object.values(value).filter(Boolean).sort((a, b) => {
+          const timeDiff = (a.joinedAt || 0) - (b.joinedAt || 0);
+          return timeDiff || String(a.name).localeCompare(String(b.name), "zh-Hant");
+        });
+        render();
+      });
+
+      db.ref("/predictions").on("value", (snap) => {
+        const value = snap.val() || {};
+        predictions = Object.values(value).filter(Boolean);
+        render();
+      });
+    })();
+  </script>
+</body>
+</html>
