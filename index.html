@@ -498,6 +498,193 @@
       font-weight: 900;
     }
 
+    /* ── Display / Projection Mode ── */
+    .display-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 48px;
+      gap: 20px;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(232,184,75,0.1), transparent 55%), var(--bg);
+    }
+
+    .display-round-label {
+      font-family: "Noto Serif TC", serif;
+      font-size: clamp(16px, 2.5vw, 26px);
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+    }
+
+    .display-versus {
+      font-family: "Noto Serif TC", serif;
+      font-size: clamp(30px, 6vw, 64px);
+      font-weight: 900;
+      color: var(--text);
+    }
+    .display-versus span { color: var(--muted); font-size: 0.5em; margin: 0 0.3em; }
+
+    .display-waiting-text {
+      font-size: clamp(14px, 2vw, 18px);
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-top: 4px;
+    }
+
+    .display-vote-grid {
+      display: grid;
+      grid-template-columns: 1fr 48px 1fr;
+      align-items: center;
+      gap: 0;
+      width: 100%;
+      max-width: 860px;
+      margin: 8px 0;
+    }
+
+    .display-player {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 28px 24px;
+      border-radius: 16px;
+    }
+    .display-p1 { background: rgba(232,184,75,0.05); border: 1px solid rgba(232,184,75,0.15); }
+    .display-p2 { background: rgba(201,64,64,0.05);  border: 1px solid rgba(201,64,64,0.15);  }
+
+    .display-player-name {
+      font-family: "Noto Serif TC", serif;
+      font-size: clamp(24px, 4.5vw, 48px);
+      font-weight: 900;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+
+    .display-vote-count {
+      font-family: "Noto Serif TC", serif;
+      font-size: clamp(56px, 11vw, 110px);
+      font-weight: 900;
+      line-height: 1;
+    }
+    .display-p1 .display-player-name,
+    .display-p1 .display-vote-count { color: var(--gold); }
+    .display-p2 .display-player-name,
+    .display-p2 .display-vote-count { color: var(--red); }
+
+    .display-bar-wrap {
+      width: 100%;
+      height: 6px;
+      background: var(--dim);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .display-bar {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.7s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    .display-bar-gold { background: var(--gold); box-shadow: 0 0 8px rgba(232,184,75,0.5); }
+    .display-bar-red  { background: var(--red);  box-shadow: 0 0 8px rgba(201,64,64,0.5);  }
+
+    .display-pct {
+      font-size: clamp(14px, 2vw, 20px);
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .display-vs-divider {
+      font-family: "Noto Serif TC", serif;
+      font-size: clamp(14px, 2vw, 22px);
+      font-weight: 900;
+      color: var(--dim);
+    }
+
+    .display-voter-count {
+      font-size: clamp(13px, 1.8vw, 17px);
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    .display-winner-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 48px;
+      gap: 16px;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% 30%, rgba(232,184,75,0.18), transparent 60%), var(--bg);
+    }
+
+    .display-trophy {
+      font-size: clamp(64px, 14vw, 130px);
+      line-height: 1;
+      filter: drop-shadow(0 0 32px rgba(232,184,75,0.6));
+    }
+
+    .display-winner-name {
+      font-family: "Noto Serif TC", serif;
+      font-size: clamp(48px, 11vw, 108px);
+      font-weight: 900;
+      color: var(--gold);
+      text-shadow: 0 0 48px rgba(232,184,75,0.45);
+      line-height: 1.1;
+      word-break: break-word;
+    }
+
+    .display-winner-sub {
+      font-size: clamp(14px, 2.2vw, 22px);
+      color: var(--muted);
+      letter-spacing: 0.18em;
+      margin-top: 4px;
+    }
+
+    .display-final-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 48px;
+      gap: 20px;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(232,184,75,0.08), transparent 55%), var(--bg);
+    }
+
+    .display-final-title {
+      font-family: "Noto Serif TC", serif;
+      font-size: clamp(24px, 4vw, 44px);
+      font-weight: 900;
+      color: var(--gold);
+    }
+
+    .display-rankings {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .display-rank-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 20px;
+    }
+    .display-rank-row.is-first { border-color: var(--gold-dim); background: #171403; }
+
+    .display-rank-medal { font-size: clamp(20px, 3vw, 26px); min-width: 36px; }
+    .display-rank-name  { flex: 1; font-size: clamp(16px, 2.5vw, 22px); font-weight: 700; text-align: left; }
+    .display-rank-score { font-family: "Noto Serif TC", serif; font-size: clamp(24px, 3.5vw, 32px); font-weight: 900; color: var(--gold); }
+
     @media (max-width: 720px) {
       .grid,
       .form-row {
@@ -706,11 +893,112 @@
       }
 
       function render() {
-        if (getMode() === "join") {
+        if (getMode() === "display") {
+          renderDisplay();
+        } else if (getMode() === "join") {
           renderParticipant();
         } else {
           renderHost();
         }
+      }
+
+      function openDisplayWindow() {
+        const url = new URL(location.href);
+        url.searchParams.set("mode", "display");
+        url.searchParams.delete("name");
+        const win = window.open(url.toString(), "_blank", "width=1280,height=720");
+        if (!win) alert("請在瀏覽器允許此頁面開啟彈出視窗後再試");
+      }
+
+      function renderDisplay() {
+        hostMounted = false;
+        participantMounted = false;
+        const round = getCurrentRound();
+
+        if (game.phase === "setup") {
+          app.innerHTML = `
+            <div class="display-shell fade-in">
+              <div style="font-family:'Noto Serif TC',serif;font-size:clamp(28px,5vw,52px);font-weight:900;color:var(--gold);letter-spacing:0.06em;">交接萬歲</div>
+              <div class="display-waiting-text pulse">等待遊戲開始...</div>
+            </div>`;
+          return;
+        }
+
+        if (game.phase === "finished") {
+          const rankings = getRankings();
+          app.innerHTML = `
+            <div class="display-final-shell fade-in">
+              <div class="display-final-title">🎉 最終排名</div>
+              <div class="display-rankings">
+                ${rankings.map((row, i) => `
+                  <div class="display-rank-row ${i === 0 ? "is-first" : ""}">
+                    <span class="display-rank-medal">${rankLabel(row.rank)}</span>
+                    <span class="display-rank-name">${escapeHTML(row.name)}</span>
+                    <span class="display-rank-score">${row.correct}</span>
+                  </div>`).join("")}
+              </div>
+            </div>`;
+          return;
+        }
+
+        if (!round) {
+          app.innerHTML = `<div class="display-shell fade-in"><div class="display-waiting-text pulse">等待中...</div></div>`;
+          return;
+        }
+
+        if (round.status === "pending") {
+          app.innerHTML = `
+            <div class="display-shell fade-in">
+              <div class="display-round-label">${escapeHTML(round.label)}</div>
+              <div class="display-versus">${escapeHTML(round.p1)} <span>vs</span> ${escapeHTML(round.p2)}</div>
+              <div class="display-waiting-text pulse">等待開放投票...</div>
+            </div>`;
+          return;
+        }
+
+        if (round.status === "closed") {
+          app.innerHTML = `
+            <div class="display-winner-shell fade-in">
+              <div class="display-round-label">${escapeHTML(round.label)}</div>
+              <div class="display-trophy">🏆</div>
+              <div class="display-winner-name">${escapeHTML(round.winner)}</div>
+              <div class="display-winner-sub">獲得本場勝利</div>
+            </div>`;
+          return;
+        }
+
+        // status === "open"
+        const roundPredictions = getPredictionsForRound(round.id);
+        const p1Votes = roundPredictions.filter(p => p.pick === round.p1).length;
+        const p2Votes = roundPredictions.filter(p => p.pick === round.p2).length;
+        const total = p1Votes + p2Votes;
+        const p1Pct = total > 0 ? Math.round(p1Votes / total * 100) : 0;
+        const p2Pct = total > 0 ? 100 - p1Pct : 0;
+
+        app.innerHTML = `
+          <div class="display-shell fade-in">
+            <div class="display-round-label">${escapeHTML(round.label)}</div>
+            <div class="display-vote-grid">
+              <div class="display-player display-p1">
+                <div class="display-player-name">${escapeHTML(round.p1)}</div>
+                <div class="display-vote-count">${p1Votes}</div>
+                <div class="display-bar-wrap">
+                  <div class="display-bar display-bar-gold" style="width:${p1Pct}%"></div>
+                </div>
+                <div class="display-pct">${total > 0 ? p1Pct + "%" : "—"}</div>
+              </div>
+              <div class="display-vs-divider">vs</div>
+              <div class="display-player display-p2">
+                <div class="display-player-name">${escapeHTML(round.p2)}</div>
+                <div class="display-vote-count">${p2Votes}</div>
+                <div class="display-bar-wrap">
+                  <div class="display-bar display-bar-red" style="width:${p2Pct}%"></div>
+                </div>
+                <div class="display-pct">${total > 0 ? p2Pct + "%" : "—"}</div>
+              </div>
+            </div>
+            <div class="display-voter-count">${roundPredictions.length} / ${participants.length} 人已投票</div>
+          </div>`;
       }
 
       function renderHost() {
@@ -863,14 +1151,16 @@
           gamePanelSignature = signature;
           destroyVoteChart();
 
+          const displayBtn = `<div style="text-align:right;margin-bottom:8px;"><button class="btn ghost" type="button" data-action="open-display" style="font-size:12px;letter-spacing:0.06em;">📺 開啟直播視窗</button></div>`;
+
           if (game.phase === "setup") {
             panel.innerHTML = `<div class="empty-state">請先在設定頁開始遊戲</div>`;
           } else if (game.phase === "finished") {
-            panel.innerHTML = `<div class="empty-state">🏁 遊戲已結束，查看排名頁</div>${completedRoundsHTML()}`;
+            panel.innerHTML = displayBtn + `<div class="empty-state">🏁 遊戲已結束，查看排名頁</div>${completedRoundsHTML()}`;
           } else if (!round) {
-            panel.innerHTML = `<div class="empty-state">找不到目前場次，請重置後重新開始。</div>`;
+            panel.innerHTML = displayBtn + `<div class="empty-state">找不到目前場次，請重置後重新開始。</div>`;
           } else {
-            panel.innerHTML = `
+            panel.innerHTML = displayBtn + `
               <div class="stack">
                 <div class="card current-round">
                   <h2>${escapeHTML(round.label)}</h2>
@@ -1388,6 +1678,7 @@
         if (!actionButton) return;
         const action = actionButton.dataset.action;
 
+        if (action === "open-display") openDisplayWindow();
         if (action === "open-qr") openQRWindow();
         if (action === "remove-round") removeRound(actionButton.dataset.roundId);
         if (action === "start-game") startGame();
