@@ -546,6 +546,9 @@
         ["leaderboard", "排名"]
       ];
 
+      const HOST_PASS = "594131";
+      let hostAuthed = sessionStorage.getItem("host-auth") === "1";
+
       let db = null;
       let game = DEFAULT_GAME;
       let participants = [];
@@ -712,6 +715,23 @@
 
       function renderHost() {
         participantMounted = false;
+
+        if (!hostAuthed) {
+          hostMounted = false;
+          app.innerHTML = `
+            <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+              <form id="host-auth-form" class="card stack fade-in" style="width:min(340px,100%);">
+                <div style="font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold);text-align:center;">⚔️ 主持人登入</div>
+                <input id="host-pass-input" type="password" placeholder="請輸入密碼" autofocus>
+                <button class="btn primary full" type="submit">進入</button>
+              </form>
+            </div>
+          `;
+          const input = document.getElementById("host-pass-input");
+          if (input) input.focus();
+          return;
+        }
+
         if (!hostMounted) {
           hostMounted = true;
           gamePanelSignature = "";
@@ -1358,6 +1378,19 @@
       });
 
       document.addEventListener("submit", (event) => {
+        if (event.target.id === "host-auth-form") {
+          event.preventDefault();
+          const input = document.getElementById("host-pass-input");
+          if (input && input.value === HOST_PASS) {
+            hostAuthed = true;
+            sessionStorage.setItem("host-auth", "1");
+            render();
+          } else {
+            input.value = "";
+            input.placeholder = "密碼錯誤，請再試";
+            input.focus();
+          }
+        }
         if (event.target.id === "round-form") {
           event.preventDefault();
           addRound();
