@@ -802,46 +802,35 @@
 
       const app = document.getElementById("app");
       const banner = document.getElementById("config-banner");
-      const TEMPLATES_KEY = "zpb-round-templates";
+      let templates = [];   // 從 Firebase /templates 同步
 
-      function loadTemplates() {
-        try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || "[]"); }
-        catch { return []; }
-      }
+      function loadTemplates() { return templates; }   // 保持呼叫相容
 
-      function persistTemplates(list) {
-        localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
-      }
-
-      function saveCurrentAsTemplate(name) {
+      async function saveCurrentAsTemplate(name) {
         if (game.rounds.length === 0) { alert("目前沒有比賽可儲存"); return; }
-        const list = loadTemplates();
-        list.push({
-          id: `t_${Date.now()}`,
-          name: name || `範本 ${list.length + 1}`,
+        const id = `t_${Date.now()}`;
+        await db.ref(`/templates/${id}`).set({
+          id,
+          name: name || `範本 ${templates.length + 1}`,
+          createdAt: Date.now(),
           rounds: game.rounds.map(r => ({ label: r.label, p1: r.p1, p2: r.p2 }))
         });
-        persistTemplates(list);
-        setupPanelSignature = "";
-        updateSetupPanel();
       }
 
-      function deleteTemplate(id) {
-        persistTemplates(loadTemplates().filter(t => t.id !== id));
-        setupPanelSignature = "";
-        updateSetupPanel();
+      async function deleteTemplate(id) {
+        await db.ref(`/templates/${id}`).remove();
       }
 
-      function renameTemplate(id, newName) {
+      async function renameTemplate(id, newName) {
         if (!newName) return;
-        persistTemplates(loadTemplates().map(t => t.id === id ? { ...t, name: newName } : t));
+        await db.ref(`/templates/${id}/name`).set(newName);
         editingTemplateId = null;
         setupPanelSignature = "";
         updateSetupPanel();
       }
 
       async function applyTemplate(id) {
-        const tpl = loadTemplates().find(t => t.id === id);
+        const tpl = templates.find(t => t.id === id);
         if (!tpl) return;
         if (game.rounds.length > 0 &&
             !confirm(`載入「${tpl.name}」後，目前 ${game.rounds.length} 場比賽將被取代，確定嗎？`)) return;
@@ -2305,6 +2294,16 @@
         displayMode = val.mode || "auto";
         displayChampion = val.championName || "";
         render();
+      });
+
+      db.ref("/templates").on("value", (snap) => {
+        const val = snap.val() || {};
+        templates = Object.values(val)
+          .filter(Boolean)
+          .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        // 只更新場次 Tab，不重繪整個畫面
+        setupPanelSignature = "";
+        if (getMode() !== "display" && getMode() !== "join") updateSetupPanel();
       });
     })();
   </script>
