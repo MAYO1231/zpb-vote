@@ -181,7 +181,7 @@
       top: 64px;
       z-index: 4;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       background: rgba(15, 15, 28, 0.95);
       border-bottom: 1px solid var(--border);
     }
@@ -744,8 +744,8 @@
       }
 
       .tab-btn {
-        font-size: 13px;
-        padding-inline: 2px;
+        font-size: 11px;
+        padding-inline: 1px;
       }
 
       .host-main {
@@ -773,6 +773,7 @@
       const TABS = [
         ["setup", "設定"],
         ["game", "遊戲"],
+        ["display", "直播"],
         ["roster", "名單"],
         ["leaderboard", "排名"]
       ];
@@ -794,6 +795,9 @@
       let voteChartRoundId = "";
       let qrSignature = "";
       let dustRaf = null;
+      let displayMode = "auto";   // "auto" | "qr" | "current" | "leaderboard" | "champion"
+      let displayChampion = "";
+      let editingRoundId = null;
 
       const app = document.getElementById("app");
       const banner = document.getElementById("config-banner");
@@ -1025,6 +1029,88 @@
         if (dustRaf) { cancelAnimationFrame(dustRaf); dustRaf = null; }
         app.style.background = "transparent";
 
+        // ── 手動直播模式覆蓋 ──────────────────────────────────────
+        if (displayMode === "qr") {
+          app.innerHTML = `
+            <div class="disp-root fade-in">
+              ${dispBgHTML(false)}
+              <div class="disp-content">
+                <div class="disp-main-title">你的杖，你的杆，都擊打我</div>
+                <div class="disp-subtitle">盲眼劍客猜勝負</div>
+                <div class="disp-divider"></div>
+                <div class="disp-join-label">掃描加入・一起見證</div>
+                <div class="disp-qr-wrap" id="disp-qr-box"></div>
+                <div class="disp-join-url">${escapeHTML(getJoinURL())}</div>
+              </div>
+            </div>`;
+          const qrBox = document.getElementById("disp-qr-box");
+          if (qrBox && typeof QRCode !== "undefined") {
+            const s = Math.min(Math.max(Math.round(window.innerWidth * 0.14), 150), 240);
+            new QRCode(qrBox, { text: getJoinURL(), width: s, height: s, colorDark: "#111", colorLight: "#fff" });
+          }
+          startDisplayDustMotes();
+          return;
+        }
+
+        if (displayMode === "leaderboard") {
+          const rankings = getRankings();
+          app.innerHTML = `
+            <div class="disp-root fade-in">
+              ${dispBgHTML(false)}
+              <div class="disp-content">
+                <div class="disp-final-title">🏅 即時排名</div>
+                <div class="disp-rankings">
+                  ${rankings.length === 0
+                    ? `<div class="disp-waiting-text">等待參與者加入...</div>`
+                    : rankings.map((row, i) => `
+                      <div class="disp-rank-row ${i === 0 ? "is-first" : ""}">
+                        <span class="disp-rank-medal">${rankLabel(row.rank)}</span>
+                        <span class="disp-rank-name">${escapeHTML(row.name)}</span>
+                        <span class="disp-rank-score">${row.correct}<span class="disp-rank-unit"> 場</span></span>
+                      </div>`).join("")}
+                </div>
+              </div>
+            </div>`;
+          startDisplayDustMotes();
+          return;
+        }
+
+        if (displayMode === "champion") {
+          const name = displayChampion;
+          app.innerHTML = `
+            <div class="disp-root fade-in">
+              ${dispBgHTML(true)}
+              <div class="disp-winner-bg"></div>
+              <div class="disp-content">
+                ${name
+                  ? `<div class="disp-trophy">🏆</div>
+                     <div class="disp-winner-name">${escapeHTML(name)}</div>
+                     <div class="disp-winner-sub">恭喜獲得最終冠軍！</div>`
+                  : `<div class="disp-waiting-text">等待公布冠軍...</div>`}
+              </div>
+            </div>`;
+          startDisplayDustMotes();
+          return;
+        }
+
+        // displayMode === "current" → 跳過 phase 判斷，直接顯示當前場次
+        if (displayMode === "current") {
+          const round = getCurrentRound();
+          if (!round) {
+            app.innerHTML = `
+              <div class="disp-root fade-in">
+                ${dispBgHTML(false)}
+                <div class="disp-content"><div class="disp-waiting-text">尚無進行中的場次</div></div>
+              </div>`;
+            startDisplayDustMotes();
+            return;
+          }
+          // fall through to per-round rendering below
+          renderDisplayRound(round);
+          return;
+        }
+
+        // ── auto 模式（原本邏輯）────────────────────────────────────
         const round = getCurrentRound();
         const intense = (round && round.status === "closed") || game.phase === "finished";
 
@@ -1081,6 +1167,10 @@
           return;
         }
 
+        renderDisplayRound(round);
+      }
+
+      function renderDisplayRound(round) {
         if (round.status === "pending") {
           app.innerHTML = `
             <div class="disp-root fade-in">
@@ -1217,6 +1307,7 @@
         updateHostTabs();
         updateSetupPanel();
         updateGamePanel();
+        updateDisplayPanel();
         updateRosterPanel();
         updateLeaderboardPanel();
       }
@@ -1235,9 +1326,11 @@
         const panel = document.getElementById("host-panel-setup");
         if (!panel) return;
 
-        const sig = `${game.phase}|${game.rounds.map(r => r.id).join(",")}`;
+        const sig = `${game.phase}|${game.rounds.map(r => r.id + r.status).join(",")}|${editingRoundId}`;
         if (sig === setupPanelSignature) return;
         setupPanelSignature = sig;
+
+        const canAdd = game.phase === "setup" || game.phase === "active";
 
         panel.innerHTML = `
           <div class="stack">
@@ -1252,34 +1345,55 @@
 
               <form id="round-form" class="card stack">
                 <h2 class="section-title">新增場次</h2>
-                <input id="round-label" type="text" placeholder="場次名稱（選填）" ${game.phase !== "setup" ? "disabled" : ""}>
+                <input id="round-label" type="text" placeholder="場次名稱（選填）">
                 <div class="form-row">
-                  <input id="round-p1" type="text" placeholder="選手 A" ${game.phase !== "setup" ? "disabled" : ""}>
-                  <input id="round-p2" type="text" placeholder="選手 B" ${game.phase !== "setup" ? "disabled" : ""}>
+                  <input id="round-p1" type="text" placeholder="選手 A">
+                  <input id="round-p2" type="text" placeholder="選手 B">
                 </div>
-                <button class="btn full" type="submit" ${game.phase !== "setup" ? "disabled" : ""}>新增場次</button>
-                ${game.phase !== "setup" ? `<div class="hint">遊戲進行中 — 切換到遊戲分頁操作</div>` : ""}
+                <button class="btn full" type="submit">＋ 新增場次</button>
+                ${game.phase === "finished" ? `<div class="hint">遊戲已結束</div>` : ""}
               </form>
             </div>
 
             <div class="card stack">
               <div class="row">
-                <h2 class="section-title" style="margin:0;">已新增場次</h2>
+                <h2 class="section-title" style="margin:0;">場次列表</h2>
                 ${game.phase === "setup" && game.rounds.length > 0
                   ? `<button class="btn primary" type="button" data-action="start-game">▶ 開始遊戲</button>`
                   : ""}
               </div>
               ${game.rounds.length === 0
                 ? `<div class="hint">尚未新增場次。至少新增 1 場後即可開始遊戲。</div>`
-                : `<div class="stack">${game.rounds.map((round) => `
-                    <div class="round-item">
-                      <div>
-                        <div class="round-name">${escapeHTML(round.label)}</div>
-                        <div class="hint">${escapeHTML(round.p1)} vs ${escapeHTML(round.p2)}</div>
-                      </div>
-                      ${game.phase === "setup" ? `<button class="btn ghost" type="button" data-action="remove-round" data-round-id="${escapeHTML(round.id)}">移除</button>` : ""}
-                    </div>
-                  `).join("")}</div>`}
+                : `<div class="stack">${game.rounds.map((round) => {
+                    const isEditing = editingRoundId === round.id;
+                    const canEdit = round.status === "pending";
+                    const isCurrent = game.phase === "active" && game.rounds.indexOf(round) === game.currentRoundIdx;
+                    if (isEditing) {
+                      return `
+                        <form class="round-item" id="edit-round-form" data-round-id="${escapeHTML(round.id)}" style="flex-direction:column;align-items:stretch;gap:8px;">
+                          <input id="edit-label" type="text" value="${escapeHTML(round.label)}" placeholder="場次名稱">
+                          <div class="form-row">
+                            <input id="edit-p1" type="text" value="${escapeHTML(round.p1)}" placeholder="選手 A">
+                            <input id="edit-p2" type="text" value="${escapeHTML(round.p2)}" placeholder="選手 B">
+                          </div>
+                          <div class="form-row">
+                            <button class="btn primary" type="submit">儲存</button>
+                            <button class="btn ghost" type="button" data-action="cancel-edit">取消</button>
+                          </div>
+                        </form>`;
+                    }
+                    return `
+                      <div class="round-item">
+                        <div style="flex:1;min-width:0;">
+                          <div class="round-name">${escapeHTML(round.label)}${isCurrent ? ' <span class="badge open" style="font-size:11px;padding:2px 8px;">進行中</span>' : ""}</div>
+                          <div class="hint">${escapeHTML(round.p1)} vs ${escapeHTML(round.p2)}${round.status === "closed" ? ` · 勝：${escapeHTML(round.winner || "")}` : ""}</div>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-shrink:0;">
+                          ${canEdit ? `<button class="btn ghost" type="button" data-action="edit-round" data-round-id="${escapeHTML(round.id)}" style="font-size:12px;padding:4px 10px;">編輯</button>` : ""}
+                          ${canEdit ? `<button class="btn red" type="button" data-action="remove-round" data-round-id="${escapeHTML(round.id)}" style="font-size:12px;padding:4px 10px;">移除</button>` : ""}
+                        </div>
+                      </div>`;
+                  }).join("")}</div>`}
             </div>
           </div>
         `;
@@ -1505,6 +1619,66 @@
         `;
       }
 
+      function updateDisplayPanel() {
+        const panel = document.getElementById("host-panel-display");
+        if (!panel) return;
+
+        const modeLabels = {
+          "auto": "自動（跟隨遊戲狀態）",
+          "qr": "📱 QR 掃描加入",
+          "current": "⚔️ 當前比賽",
+          "leaderboard": "🏅 即時排名",
+          "champion": "🎉 公布冠軍"
+        };
+
+        const rankings = getRankings();
+
+        panel.innerHTML = `
+          <div class="stack">
+            <div class="card">
+              <div class="row" style="align-items:center;">
+                <div>
+                  <h2 class="section-title" style="margin:0 0 4px;">直播視窗</h2>
+                  <div class="hint">開啟獨立視窗投影到大螢幕</div>
+                </div>
+                <button class="btn blue" type="button" data-action="open-display">📺 開啟</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="section-title">目前畫面</h2>
+              <div style="font-size:15px;font-weight:700;color:var(--gold);">${modeLabels[displayMode] || displayMode}</div>
+              ${displayMode === "champion" && displayChampion ? `<div class="hint" style="margin-top:4px;">冠軍：${escapeHTML(displayChampion)}</div>` : ""}
+            </div>
+
+            <div class="card stack">
+              <h2 class="section-title">切換畫面</h2>
+              <div class="grid" style="grid-template-columns:1fr 1fr;">
+                <button class="btn ${displayMode === "qr" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="qr">📱 QR 掃描</button>
+                <button class="btn ${displayMode === "current" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="current">⚔️ 當前比賽</button>
+                <button class="btn ${displayMode === "leaderboard" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="leaderboard">🏅 即時排名</button>
+                <button class="btn ${displayMode === "champion" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="champion">🎉 公布冠軍</button>
+              </div>
+              <button class="btn ${displayMode === "auto" ? "primary" : "ghost"} full" type="button" data-action="disp-mode" data-mode="auto">↺ 自動模式（跟隨遊戲）</button>
+            </div>
+
+            ${displayMode === "champion" ? `
+            <div class="card stack">
+              <h2 class="section-title">選擇冠軍</h2>
+              ${rankings.length === 0
+                ? `<div class="hint">尚無參與者</div>`
+                : rankings.map(row => `
+                  <button class="btn ${displayChampion === row.name ? "gold" : "ghost"} full" type="button"
+                          data-action="disp-champion" data-name="${escapeHTML(row.name)}">
+                    ${rankLabel(row.rank)} ${escapeHTML(row.name)}
+                    <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:8px;">${row.correct} 場</span>
+                  </button>`).join("")}
+            </div>
+            ` : ""}
+          </div>
+        `;
+      }
+
       function renderParticipant() {
         hostMounted = false;
         app.style.background = "";
@@ -1726,7 +1900,7 @@
       }
 
       async function addRound() {
-        if (game.phase !== "setup") return;
+        if (game.phase === "finished") return;
         const labelInput = document.getElementById("round-label");
         const p1Input = document.getElementById("round-p1");
         const p2Input = document.getElementById("round-p2");
@@ -1748,12 +1922,34 @@
           status: "pending",
           winner: null
         };
+        if (labelInput) labelInput.value = "";
+        if (p1Input) p1Input.value = "";
+        if (p2Input) p2Input.value = "";
         await saveGame({ ...game, rounds: [...game.rounds, round] });
       }
 
       async function removeRound(roundId) {
-        if (game.phase !== "setup") return;
+        const target = game.rounds.find(r => r.id === roundId);
+        if (!target || target.status !== "pending") return;
         await saveGame({ ...game, rounds: game.rounds.filter((round) => round.id !== roundId) });
+      }
+
+      async function updateRound(roundId, label, p1, p2) {
+        const target = game.rounds.find(r => r.id === roundId);
+        if (!target || target.status !== "pending") return;
+        if (!p1 || !p2) { alert("請填入選手 A 與選手 B"); return; }
+        const rounds = game.rounds.map(r =>
+          r.id === roundId ? { ...r, label: label || target.label, p1, p2 } : r
+        );
+        editingRoundId = null;
+        setupPanelSignature = "";
+        await saveGame({ ...game, rounds });
+      }
+
+      async function setDisplayMode(mode, championName = "") {
+        displayMode = mode;
+        displayChampion = championName;
+        await db.ref("/display").set({ mode, championName });
       }
 
       async function startGame() {
@@ -1784,10 +1980,14 @@
       async function resetGame() {
         destroyVoteChart();
         hostTab = "setup";
+        editingRoundId = null;
+        displayMode = "auto";
+        displayChampion = "";
         await db.ref().update({
           game: null,
           participants: null,
-          predictions: null
+          predictions: null,
+          display: null
         });
       }
 
@@ -1839,11 +2039,23 @@
         if (action === "open-display") openDisplayWindow();
         if (action === "open-qr") openQRWindow();
         if (action === "remove-round") removeRound(actionButton.dataset.roundId);
+        if (action === "edit-round") {
+          editingRoundId = actionButton.dataset.roundId;
+          setupPanelSignature = "";
+          updateSetupPanel();
+        }
+        if (action === "cancel-edit") {
+          editingRoundId = null;
+          setupPanelSignature = "";
+          updateSetupPanel();
+        }
         if (action === "start-game") startGame();
         if (action === "open-round") openRound();
         if (action === "mark-winner") markWinner(actionButton.dataset.winner);
         if (action === "reset") resetGame();
         if (action === "vote") vote(actionButton.dataset.pick);
+        if (action === "disp-mode") setDisplayMode(actionButton.dataset.mode, displayChampion);
+        if (action === "disp-champion") setDisplayMode("champion", actionButton.dataset.name);
       });
 
       document.addEventListener("submit", (event) => {
@@ -1863,6 +2075,14 @@
         if (event.target.id === "round-form") {
           event.preventDefault();
           addRound();
+        }
+        if (event.target.id === "edit-round-form") {
+          event.preventDefault();
+          const roundId = event.target.dataset.roundId;
+          const label = document.getElementById("edit-label")?.value.trim();
+          const p1 = document.getElementById("edit-p1")?.value.trim();
+          const p2 = document.getElementById("edit-p2")?.value.trim();
+          updateRound(roundId, label, p1, p2);
         }
         if (event.target.id === "join-form") {
           event.preventDefault();
@@ -1903,6 +2123,13 @@
       db.ref("/predictions").on("value", (snap) => {
         const value = snap.val() || {};
         predictions = Object.values(value).filter(Boolean);
+        render();
+      });
+
+      db.ref("/display").on("value", (snap) => {
+        const val = snap.val() || {};
+        displayMode = val.mode || "auto";
+        displayChampion = val.championName || "";
         render();
       });
     })();
