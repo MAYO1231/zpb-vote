@@ -528,202 +528,206 @@
       font-weight: 900;
     }
 
-    /* ── Display / Projection Mode ── */
-    .display-shell {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 48px;
-      gap: 20px;
-      text-align: center;
-      background: radial-gradient(ellipse at 50% 0%, rgba(232,184,75,0.1), transparent 55%), var(--bg);
+    /* ══════════════════════════════════════════════════════════════
+       DISPLAY / PROJECTION MODE — 殿堂光柱
+    ══════════════════════════════════════════════════════════════ */
+
+    /* Cathedral fixed background */
+    .disp-bg {
+      position: fixed; inset: 0; overflow: hidden; z-index: 0;
+      background: radial-gradient(ellipse 90% 60% at 50% -10%, #2a1e08 0%, #0a0810 55%, #060508 100%);
+    }
+    .cath-arch {
+      position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+      width: min(1600px, 100%); height: 55%;
+      background: radial-gradient(ellipse 70% 100% at 50% 0%, rgba(200,155,50,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cath-rays { position: absolute; inset: 0; opacity: 0.7; transition: opacity 1.5s ease; }
+    .cath-rays.is-intense { opacity: 1; }
+    .cath-ray { position: absolute; top: 0; transform-origin: 50% 0%; border-radius: 0 0 200px 200px; }
+    .cath-ray-1 { left: 10%; width: 6vw;  height: 85vh; background: linear-gradient(180deg, rgba(230,185,80,0.20) 0%, transparent 100%); transform: rotate(-32deg); filter: blur(3px); animation: cathBreath 9s  ease-in-out infinite; }
+    .cath-ray-2 { left: 28%; width: 7vw;  height: 80vh; background: linear-gradient(180deg, rgba(255,210,100,0.26) 0%, transparent 100%); transform: rotate(-14deg); filter: blur(2px); animation: cathBreath 11s ease-in-out infinite 1.3s; }
+    .cath-ray-3 { left: 47%; width: 7vw;  height: 76vh; background: linear-gradient(180deg, rgba(255,215,110,0.30) 0%, transparent 100%); transform: rotate(2deg);   filter: blur(2px); animation: cathBreath 8s  ease-in-out infinite 0.6s; }
+    .cath-ray-4 { left: 64%; width: 6vw;  height: 72vh; background: linear-gradient(180deg, rgba(220,170,60,0.20) 0%, transparent 100%); transform: rotate(18deg);  filter: blur(3px); animation: cathBreath 13s ease-in-out infinite 2.4s; }
+    .cath-ray-5 { left: 78%; width: 5vw;  height: 65vh; background: linear-gradient(180deg, rgba(230,185,80,0.15) 0%, transparent 100%); transform: rotate(34deg);  filter: blur(4px); animation: cathBreath 10s ease-in-out infinite 3.8s; }
+    @keyframes cathBreath { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+    .cath-floor {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 35%;
+      background: radial-gradient(ellipse 70% 100% at 50% 100%, rgba(200,155,50,0.12) 0%, transparent 70%);
+    }
+    .cath-vignette {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.72) 100%);
+    }
+    .disp-dust {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      display: block; pointer-events: none;
     }
 
-    .display-round-label {
-      font-family: "Noto Serif TC", serif;
-      font-size: clamp(16px, 2.5vw, 26px);
-      font-weight: 700;
-      color: var(--muted);
-      letter-spacing: 0.12em;
+    /* Display root layout */
+    .disp-root {
+      position: relative; min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: clamp(24px,4vh,60px) clamp(20px,5vw,80px);
+      text-align: center; gap: clamp(10px,2vh,24px);
+    }
+    .disp-content {
+      position: relative; z-index: 5;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: clamp(10px,2vh,28px); width: 100%;
+    }
+    .disp-verse {
+      position: fixed; bottom: clamp(14px,2.5vh,36px); left: 0; right: 0; z-index: 6;
+      text-align: center; pointer-events: none;
+      font-family: "Noto Serif TC", serif; font-size: clamp(12px,1.4vw,20px);
+      font-weight: 700; letter-spacing: 0.24em; color: rgba(240,200,80,0.25);
     }
 
-    .display-versus {
-      font-family: "Noto Serif TC", serif;
-      font-size: clamp(30px, 6vw, 64px);
-      font-weight: 900;
-      color: var(--text);
+    /* shared display elements */
+    .disp-round-label {
+      font-size: clamp(13px,1.8vw,26px); font-weight: 500;
+      letter-spacing: 0.28em; color: rgba(240,200,80,0.55);
     }
-    .display-versus span { color: var(--muted); font-size: 0.5em; margin: 0 0.3em; }
-
-    .display-waiting-text {
-      font-size: clamp(14px, 2vw, 18px);
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      margin-top: 4px;
+    .disp-main-title {
+      font-family: "Noto Serif TC", serif; font-size: clamp(48px,9vw,120px);
+      font-weight: 900; line-height: 1.05; letter-spacing: 0.06em; color: #f0c96e;
+      text-shadow: 0 0 60px rgba(240,200,80,0.4), 0 0 120px rgba(240,200,80,0.2);
     }
-
-    .display-vote-grid {
-      display: grid;
-      grid-template-columns: 1fr 48px 1fr;
-      align-items: center;
-      gap: 0;
-      width: 100%;
-      max-width: 860px;
-      margin: 8px 0;
+    .disp-subtitle {
+      font-size: clamp(13px,1.6vw,28px); font-weight: 400;
+      letter-spacing: 0.18em; color: rgba(240,200,80,0.42);
     }
-
-    .display-player {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      padding: 28px 24px;
-      border-radius: 16px;
+    .disp-divider {
+      width: 60px; height: 1px; margin: clamp(6px,1.2vh,18px) auto;
+      background: linear-gradient(90deg, transparent, rgba(240,200,80,0.5), transparent);
     }
-    .display-p1 { background: rgba(232,184,75,0.05); border: 1px solid rgba(232,184,75,0.15); }
-    .display-p2 { background: rgba(201,64,64,0.05);  border: 1px solid rgba(201,64,64,0.15);  }
-
-    .display-player-name {
-      font-family: "Noto Serif TC", serif;
-      font-size: clamp(24px, 4.5vw, 48px);
-      font-weight: 900;
-      line-height: 1.1;
-      word-break: break-word;
+    .disp-join-label {
+      font-size: clamp(13px,1.8vw,26px); letter-spacing: 0.2em;
+      font-weight: 500; color: rgba(240,200,80,0.65);
+    }
+    .disp-qr-wrap {
+      background: #fff; padding: clamp(8px,1vw,14px); border-radius: 10px;
+      box-shadow: 0 0 60px rgba(240,200,80,0.35), 0 0 120px rgba(240,200,80,0.15);
+      display: inline-block; font-size: 0; line-height: 0;
+    }
+    .disp-join-url {
+      font-size: clamp(10px,1.1vw,16px); color: rgba(240,200,80,0.28); letter-spacing: 0.08em;
+    }
+    .disp-waiting-text {
+      font-size: clamp(13px,1.8vw,22px); letter-spacing: 0.14em;
+      color: rgba(200,200,220,0.38); animation: pulse 2.4s ease-in-out infinite;
     }
 
-    .display-vote-count {
-      font-family: "Noto Serif TC", serif;
-      font-size: clamp(56px, 11vw, 110px);
-      font-weight: 900;
-      line-height: 1;
-      animation: glowIn 0.4s ease forwards;
+    /* pending vs row */
+    .disp-versus-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: clamp(16px,4vw,80px); width: 100%;
     }
-    .display-p1 .display-player-name,
-    .display-p1 .display-vote-count { color: var(--gold); }
-    .display-p2 .display-player-name,
-    .display-p2 .display-vote-count { color: var(--red); }
-
-    .display-bar-wrap {
-      width: 100%;
-      height: 6px;
-      background: var(--dim);
-      border-radius: 3px;
-      overflow: hidden;
+    .disp-player-name {
+      font-family: "Noto Serif TC", serif; font-size: clamp(36px,7vw,100px);
+      font-weight: 900; line-height: 1.1; flex: 1; max-width: clamp(260px,40vw,600px);
     }
-    .display-bar {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.7s cubic-bezier(0.34, 1.2, 0.64, 1);
-    }
-    .display-bar-gold { background: var(--gold); box-shadow: 0 0 8px rgba(232,184,75,0.5); }
-    .display-bar-red  { background: var(--red);  box-shadow: 0 0 8px rgba(201,64,64,0.5);  }
-
-    .display-pct {
-      font-size: clamp(14px, 2vw, 20px);
-      font-weight: 700;
-      color: var(--muted);
+    .disp-p1-name { color: #f0c96e; text-shadow: 0 0 40px rgba(240,200,80,0.35); }
+    .disp-p2-name { color: #e07060; text-shadow: 0 0 40px rgba(220,100,80,0.35); }
+    .disp-vs-text {
+      font-family: "Noto Serif TC", serif; font-size: clamp(18px,2.5vw,40px);
+      font-weight: 700; color: rgba(200,200,220,0.28); letter-spacing: 0.1em;
     }
 
-    .display-vs-divider {
-      font-family: "Noto Serif TC", serif;
-      font-size: clamp(14px, 2vw, 22px);
-      font-weight: 900;
-      color: var(--dim);
+    /* voting grid */
+    .disp-vote-grid {
+      display: grid; grid-template-columns: 1fr clamp(36px,5.5vw,72px) 1fr;
+      align-items: center; width: 100%; max-width: min(1400px,96vw);
+    }
+    .disp-vote-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: clamp(6px,1.4vh,18px);
+      padding: clamp(18px,2.8vw,52px) clamp(14px,2.2vw,40px);
+      border-radius: clamp(10px,1.4vw,20px);
+    }
+    .disp-vc-p1 { background: rgba(240,200,80,0.05); border: 1px solid rgba(240,200,80,0.18); }
+    .disp-vc-p2 { background: rgba(220,100,80,0.05); border: 1px solid rgba(220,100,80,0.18); }
+    .disp-vc-name {
+      font-family: "Noto Serif TC", serif; font-size: clamp(22px,4.5vw,70px);
+      font-weight: 900; line-height: 1.1;
+    }
+    .disp-vc-p1 .disp-vc-name { color: #f0c96e; }
+    .disp-vc-p2 .disp-vc-name { color: #e07060; }
+    .disp-vc-count {
+      font-family: "Noto Serif TC", serif; font-size: clamp(60px,12vw,155px);
+      font-weight: 900; line-height: 0.9; animation: glowIn 0.4s ease forwards;
+    }
+    .disp-vc-p1 .disp-vc-count { color: #f0c96e; }
+    .disp-vc-p2 .disp-vc-count { color: #e07060; }
+    .disp-vc-bar-wrap {
+      width: 100%; height: clamp(5px,0.55vh,9px); border-radius: 4px;
+      background: rgba(255,255,255,0.08); overflow: hidden;
+    }
+    .disp-vc-bar {
+      height: 100%; border-radius: 4px;
+      transition: width 0.8s cubic-bezier(0.34,1.2,0.64,1);
+    }
+    .disp-vc-bar-p1 { background: #f0c96e; box-shadow: 0 0 14px rgba(240,200,80,0.6); }
+    .disp-vc-bar-p2 { background: #e07060; box-shadow: 0 0 14px rgba(220,100,80,0.6); }
+    .disp-vc-pct {
+      font-size: clamp(13px,1.5vw,24px); font-weight: 700;
+      color: rgba(200,200,220,0.48); letter-spacing: 0.08em;
+    }
+    .disp-vote-vs-col {
+      display: flex; flex-direction: column; align-items: center;
+      gap: clamp(6px,1.5vh,18px);
+    }
+    .disp-vs-pill {
+      font-family: "Noto Serif TC", serif; font-size: clamp(13px,1.6vw,26px);
+      font-weight: 900; color: rgba(200,200,220,0.2); letter-spacing: 0.15em;
+    }
+    .disp-voter-count {
+      font-size: clamp(10px,1.2vw,17px); color: rgba(200,200,220,0.36);
+      letter-spacing: 0.06em; line-height: 1.6; writing-mode: vertical-rl;
     }
 
-    .display-voter-count {
-      font-size: clamp(13px, 1.8vw, 17px);
-      color: var(--muted);
-      letter-spacing: 0.06em;
-    }
-
-    .display-winner-shell {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 48px;
-      gap: 16px;
-      text-align: center;
-      background: radial-gradient(ellipse at 50% 30%, rgba(232,184,75,0.18), transparent 60%), var(--bg);
-    }
-
-    .display-trophy {
-      font-size: clamp(64px, 14vw, 130px);
-      line-height: 1;
+    /* winner */
+    .disp-trophy {
+      font-size: clamp(64px,13vw,150px); line-height: 1;
       animation: trophyFloat 2.8s ease-in-out infinite;
     }
-
-    .display-winner-name {
-      font-family: "Noto Serif TC", serif;
-      font-size: clamp(48px, 11vw, 108px);
-      font-weight: 900;
-      color: var(--gold);
-      line-height: 1.1;
-      word-break: break-word;
+    .disp-winner-name {
+      font-family: "Noto Serif TC", serif; font-size: clamp(50px,10.5vw,125px);
+      font-weight: 900; color: #f0c96e; line-height: 1.1; word-break: break-word;
       animation: goldPulse 2.8s ease-in-out infinite, glowIn 0.6s ease forwards;
     }
-
-    .display-winner-sub {
-      font-size: clamp(14px, 2.2vw, 22px);
-      color: var(--muted);
-      letter-spacing: 0.18em;
-      margin-top: 4px;
+    .disp-winner-sub {
+      font-size: clamp(13px,1.8vw,26px); color: rgba(200,200,220,0.42); letter-spacing: 0.24em;
     }
-
-    .display-winner-shell::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(ellipse at 50% 40%, rgba(232,184,75,0.13), transparent 60%);
-      pointer-events: none;
+    .disp-winner-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 1;
+      background: radial-gradient(ellipse at 50% 35%, rgba(240,200,80,0.14), transparent 60%);
       animation: pulse 3s ease-in-out infinite;
     }
 
-    .display-final-shell {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 48px;
-      gap: 20px;
-      text-align: center;
-      background: radial-gradient(ellipse at 50% 0%, rgba(232,184,75,0.08), transparent 55%), var(--bg);
+    /* finals */
+    .disp-final-title {
+      font-family: "Noto Serif TC", serif; font-size: clamp(22px,3.8vw,52px);
+      font-weight: 900; color: #f0c96e; letter-spacing: 0.1em;
     }
-
-    .display-final-title {
-      font-family: "Noto Serif TC", serif;
-      font-size: clamp(24px, 4vw, 44px);
-      font-weight: 900;
-      color: var(--gold);
+    .disp-rankings {
+      display: flex; flex-direction: column; gap: clamp(5px,1vh,12px);
+      width: 100%; max-width: min(680px,90vw);
     }
-
-    .display-rankings {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: 100%;
-      max-width: 520px;
+    .disp-rank-row {
+      display: flex; align-items: center; gap: clamp(10px,2vw,26px);
+      padding: clamp(9px,1.4vh,20px) clamp(10px,1.8vw,30px);
+      border-radius: clamp(7px,1vw,13px);
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
     }
-
-    .display-rank-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 20px;
-    }
-    .display-rank-row.is-first { border-color: var(--gold-dim); background: #171403; }
-
-    .display-rank-medal { font-size: clamp(20px, 3vw, 26px); min-width: 36px; }
-    .display-rank-name  { flex: 1; font-size: clamp(16px, 2.5vw, 22px); font-weight: 700; text-align: left; }
-    .display-rank-score { font-family: "Noto Serif TC", serif; font-size: clamp(24px, 3.5vw, 32px); font-weight: 900; color: var(--gold); }
+    .disp-rank-row.is-first { border-color: rgba(240,200,80,0.5); background: rgba(240,200,80,0.06); }
+    .disp-rank-medal { font-size: clamp(20px,2.8vw,38px); min-width: clamp(30px,3.5vw,50px); }
+    .disp-rank-name  { flex: 1; font-family: "Noto Serif TC",serif; font-size: clamp(17px,2.4vw,36px); font-weight: 700; text-align: left; }
+    .disp-rank-score { font-family: "Noto Serif TC",serif; font-size: clamp(24px,3.2vw,48px); font-weight: 900; color: #f0c96e; }
+    .disp-rank-unit  { font-size: 0.55em; color: rgba(200,200,220,0.42); }
 
     @media (max-width: 720px) {
       .grid,
@@ -789,6 +793,7 @@
       let voteChart = null;
       let voteChartRoundId = "";
       let qrSignature = "";
+      let dustRaf = null;
 
       const app = document.getElementById("app");
       const banner = document.getElementById("config-banner");
@@ -950,60 +955,163 @@
         if (!win) alert("請在瀏覽器允許此頁面開啟彈出視窗後再試");
       }
 
+      // ── Cathedral dust motes ─────────────────────────────────────
+      function startDisplayDustMotes() {
+        if (dustRaf) { cancelAnimationFrame(dustRaf); dustRaf = null; }
+        const cvs = document.getElementById("disp-dust");
+        if (!cvs) return;
+        const ctx = cvs.getContext("2d");
+        function resize() { cvs.width = window.innerWidth; cvs.height = window.innerHeight; }
+        resize();
+        const onResize = () => resize();
+        window.addEventListener("resize", onResize);
+        const count = 110;
+        const motes = Array.from({ length: count }, () => ({
+          x: Math.random() * cvs.width,
+          y: Math.random() * cvs.height,
+          r: 0.6 + Math.random() * 2.2,
+          vx: -0.05 + Math.random() * 0.1,
+          vy: -0.14 - Math.random() * 0.28,
+          tw: Math.random() * Math.PI * 2,
+          a: 0.14 + Math.random() * 0.52,
+        }));
+        let last = performance.now();
+        function tick(t) {
+          const dt = Math.min(50, t - last) / 16.67;
+          last = t;
+          const W = cvs.width, H = cvs.height;
+          ctx.clearRect(0, 0, W, H);
+          for (const m of motes) {
+            m.x += m.vx * dt; m.y += m.vy * dt; m.tw += 0.018 * dt;
+            if (m.y < -10) { m.y = H + 10; m.x = Math.random() * W; }
+            if (m.x < -10) m.x = W + 10;
+            if (m.x > W + 10) m.x = -10;
+            const a = m.a * (0.55 + 0.45 * Math.sin(m.tw));
+            const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r * 4);
+            g.addColorStop(0, `rgba(255,220,150,${a})`);
+            g.addColorStop(1, "rgba(255,220,150,0)");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.r * 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          dustRaf = requestAnimationFrame(tick);
+        }
+        dustRaf = requestAnimationFrame(tick);
+      }
+
+      // ── Cathedral background HTML ─────────────────────────────
+      function dispBgHTML(intense) {
+        return `
+          <div class="disp-bg">
+            <div class="cath-arch"></div>
+            <div class="cath-rays${intense ? " is-intense" : ""}">
+              <div class="cath-ray cath-ray-1"></div>
+              <div class="cath-ray cath-ray-2"></div>
+              <div class="cath-ray cath-ray-3"></div>
+              <div class="cath-ray cath-ray-4"></div>
+              <div class="cath-ray cath-ray-5"></div>
+            </div>
+            <div class="cath-floor"></div>
+            <div class="cath-vignette"></div>
+            <canvas id="disp-dust" class="disp-dust"></canvas>
+          </div>
+          <div class="disp-verse">你的杖，你的杆，都安慰我</div>`;
+      }
+
       function renderDisplay() {
         hostMounted = false;
         participantMounted = false;
+        if (dustRaf) { cancelAnimationFrame(dustRaf); dustRaf = null; }
+        app.style.background = "transparent";
+
         const round = getCurrentRound();
+        const intense = (round && round.status === "closed") || game.phase === "finished";
 
         if (game.phase === "setup") {
           app.innerHTML = `
-            <div class="display-shell fade-in">
-              <div style="font-family:'Noto Serif TC',serif;font-size:clamp(28px,5vw,52px);font-weight:900;color:var(--gold);letter-spacing:0.06em;">交接萬歲</div>
-              <div class="display-waiting-text pulse">等待遊戲開始...</div>
+            <div class="disp-root fade-in">
+              ${dispBgHTML(false)}
+              <div class="disp-content">
+                <div class="disp-main-title">交接萬歲</div>
+                <div class="disp-subtitle">盲眼劍客猜勝負・職棒傳承</div>
+                <div class="disp-divider"></div>
+                <div class="disp-join-label">掃描加入・一起見證</div>
+                <div class="disp-qr-wrap" id="disp-qr-box"></div>
+                <div class="disp-waiting-text">等待遊戲開始...</div>
+              </div>
             </div>`;
+          const qrBox = document.getElementById("disp-qr-box");
+          if (qrBox && typeof QRCode !== "undefined") {
+            const s = Math.min(Math.max(Math.round(window.innerWidth * 0.14), 150), 240);
+            new QRCode(qrBox, { text: getJoinURL(), width: s, height: s, colorDark: "#111", colorLight: "#fff" });
+          }
+          startDisplayDustMotes();
           return;
         }
 
         if (game.phase === "finished") {
           const rankings = getRankings();
           app.innerHTML = `
-            <div class="display-final-shell fade-in">
-              <div class="display-final-title">🎉 最終排名</div>
-              <div class="display-rankings">
-                ${rankings.map((row, i) => `
-                  <div class="display-rank-row ${i === 0 ? "is-first" : ""}">
-                    <span class="display-rank-medal">${rankLabel(row.rank)}</span>
-                    <span class="display-rank-name">${escapeHTML(row.name)}</span>
-                    <span class="display-rank-score">${row.correct}</span>
-                  </div>`).join("")}
+            <div class="disp-root fade-in">
+              ${dispBgHTML(true)}
+              <div class="disp-content">
+                <div class="disp-final-title">🎉 最終排名</div>
+                <div class="disp-rankings">
+                  ${rankings.map((row, i) => `
+                    <div class="disp-rank-row ${i === 0 ? "is-first" : ""}">
+                      <span class="disp-rank-medal">${rankLabel(row.rank)}</span>
+                      <span class="disp-rank-name">${escapeHTML(row.name)}</span>
+                      <span class="disp-rank-score">${row.correct}<span class="disp-rank-unit"> 場</span></span>
+                    </div>`).join("")}
+                </div>
               </div>
             </div>`;
+          startDisplayDustMotes();
           return;
         }
 
         if (!round) {
-          app.innerHTML = `<div class="display-shell fade-in"><div class="display-waiting-text pulse">等待中...</div></div>`;
+          app.innerHTML = `
+            <div class="disp-root fade-in">
+              ${dispBgHTML(false)}
+              <div class="disp-content"><div class="disp-waiting-text">等待中...</div></div>
+            </div>`;
+          startDisplayDustMotes();
           return;
         }
 
         if (round.status === "pending") {
           app.innerHTML = `
-            <div class="display-shell fade-in">
-              <div class="display-round-label">${escapeHTML(round.label)}</div>
-              <div class="display-versus">${escapeHTML(round.p1)} <span>vs</span> ${escapeHTML(round.p2)}</div>
-              <div class="display-waiting-text pulse">等待開放投票...</div>
+            <div class="disp-root fade-in">
+              ${dispBgHTML(false)}
+              <div class="disp-content">
+                <div class="disp-round-label">${escapeHTML(round.label)}</div>
+                <div class="disp-versus-row">
+                  <div class="disp-player-name disp-p1-name">${escapeHTML(round.p1)}</div>
+                  <div class="disp-vs-text">vs</div>
+                  <div class="disp-player-name disp-p2-name">${escapeHTML(round.p2)}</div>
+                </div>
+                <div class="disp-waiting-text">等待開放投票...</div>
+              </div>
             </div>`;
+          startDisplayDustMotes();
           return;
         }
 
         if (round.status === "closed") {
           app.innerHTML = `
-            <div class="display-winner-shell fade-in">
-              <div class="display-round-label">${escapeHTML(round.label)}</div>
-              <div class="display-trophy">🏆</div>
-              <div class="display-winner-name">${escapeHTML(round.winner)}</div>
-              <div class="display-winner-sub">獲得本場勝利</div>
+            <div class="disp-root fade-in">
+              ${dispBgHTML(true)}
+              <div class="disp-winner-bg"></div>
+              <div class="disp-content">
+                <div class="disp-round-label">${escapeHTML(round.label)} — 結果揭曉</div>
+                <div class="disp-trophy">🏆</div>
+                <div class="disp-winner-name">${escapeHTML(round.winner)}</div>
+                <div class="disp-winner-sub">獲得本場勝利</div>
+              </div>
             </div>`;
+          startDisplayDustMotes();
           return;
         }
 
@@ -1016,33 +1124,41 @@
         const p2Pct = total > 0 ? 100 - p1Pct : 0;
 
         app.innerHTML = `
-          <div class="display-shell fade-in">
-            <div class="display-round-label">${escapeHTML(round.label)}</div>
-            <div class="display-vote-grid">
-              <div class="display-player display-p1">
-                <div class="display-player-name">${escapeHTML(round.p1)}</div>
-                <div class="display-vote-count">${p1Votes}</div>
-                <div class="display-bar-wrap">
-                  <div class="display-bar display-bar-gold" style="width:${p1Pct}%"></div>
+          <div class="disp-root fade-in">
+            ${dispBgHTML(false)}
+            <div class="disp-content">
+              <div class="disp-round-label">${escapeHTML(round.label)}</div>
+              <div class="disp-vote-grid">
+                <div class="disp-vote-card disp-vc-p1">
+                  <div class="disp-vc-name">${escapeHTML(round.p1)}</div>
+                  <div class="disp-vc-count">${p1Votes}</div>
+                  <div class="disp-vc-bar-wrap">
+                    <div class="disp-vc-bar disp-vc-bar-p1" style="width:${p1Pct}%"></div>
+                  </div>
+                  <div class="disp-vc-pct">${total > 0 ? p1Pct + "%" : "—"}</div>
                 </div>
-                <div class="display-pct">${total > 0 ? p1Pct + "%" : "—"}</div>
-              </div>
-              <div class="display-vs-divider">vs</div>
-              <div class="display-player display-p2">
-                <div class="display-player-name">${escapeHTML(round.p2)}</div>
-                <div class="display-vote-count">${p2Votes}</div>
-                <div class="display-bar-wrap">
-                  <div class="display-bar display-bar-red" style="width:${p2Pct}%"></div>
+                <div class="disp-vote-vs-col">
+                  <div class="disp-vs-pill">VS</div>
+                  <div class="disp-voter-count">${roundPredictions.length} / ${participants.length} 人已投票</div>
                 </div>
-                <div class="display-pct">${total > 0 ? p2Pct + "%" : "—"}</div>
+                <div class="disp-vote-card disp-vc-p2">
+                  <div class="disp-vc-name">${escapeHTML(round.p2)}</div>
+                  <div class="disp-vc-count">${p2Votes}</div>
+                  <div class="disp-vc-bar-wrap">
+                    <div class="disp-vc-bar disp-vc-bar-p2" style="width:${p2Pct}%"></div>
+                  </div>
+                  <div class="disp-vc-pct">${total > 0 ? p2Pct + "%" : "—"}</div>
+                </div>
               </div>
             </div>
-            <div class="display-voter-count">${roundPredictions.length} / ${participants.length} 人已投票</div>
           </div>`;
+        startDisplayDustMotes();
       }
 
       function renderHost() {
         participantMounted = false;
+        app.style.background = "";
+        if (dustRaf) { cancelAnimationFrame(dustRaf); dustRaf = null; }
 
         if (!hostAuthed) {
           hostMounted = false;
@@ -1391,6 +1507,8 @@
 
       function renderParticipant() {
         hostMounted = false;
+        app.style.background = "";
+        if (dustRaf) { cancelAnimationFrame(dustRaf); dustRaf = null; }
         destroyVoteChart();
         participantName = getNameParam();
 
