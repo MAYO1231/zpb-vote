@@ -771,7 +771,7 @@
     (() => {
       const DEFAULT_GAME = { phase: "setup", currentRoundIdx: 0, rounds: [] };
       const TABS = [
-        ["setup", "設定"],
+        ["setup", "場次"],
         ["game", "遊戲"],
         ["display", "直播"],
         ["roster", "名單"],
@@ -1330,54 +1330,63 @@
         if (sig === setupPanelSignature) return;
         setupPanelSignature = sig;
 
-        const canAdd = game.phase === "setup" || game.phase === "active";
+        const isFinished = game.phase === "finished";
+        const isSetup    = game.phase === "setup";
 
         panel.innerHTML = `
           <div class="stack">
-            <div class="grid">
-              <div class="card qr-card">
-                <h2 class="section-title">參與 QR Code</h2>
-                <div id="qr-box" class="qr-box"></div>
-                <div style="margin-top: 12px;">
-                  <button class="btn" type="button" data-action="open-qr">↗ 在新視窗顯示 QR Code</button>
-                </div>
-              </div>
 
-              <form id="round-form" class="card stack">
-                <h2 class="section-title">新增場次</h2>
-                <input id="round-label" type="text" placeholder="場次名稱（選填）">
-                <div class="form-row">
-                  <input id="round-p1" type="text" placeholder="選手 A">
-                  <input id="round-p2" type="text" placeholder="選手 B">
-                </div>
-                <button class="btn full" type="submit">＋ 新增場次</button>
-                ${game.phase === "finished" ? `<div class="hint">遊戲已結束</div>` : ""}
-              </form>
-            </div>
+            ${isSetup && game.rounds.length > 0 ? `
+              <button class="btn primary full" type="button" data-action="start-game" style="font-size:16px;padding:14px;">
+                ▶ 開始遊戲（${game.rounds.length} 場已就緒）
+              </button>` : ""}
+
+            <form id="round-form" class="card stack">
+              <h2 class="section-title">＋ 新增比賽</h2>
+              <input id="round-label" type="text" placeholder="比賽名稱（選填，例：第一場）"
+                     ${isFinished ? "disabled" : ""}>
+              <div class="form-row">
+                <input id="round-p1" type="text" placeholder="選手 A ／左方"
+                       ${isFinished ? "disabled" : ""}>
+                <input id="round-p2" type="text" placeholder="選手 B ／右方"
+                       ${isFinished ? "disabled" : ""}>
+              </div>
+              <button class="btn blue full" type="submit" ${isFinished ? "disabled" : ""}
+                      style="font-size:15px;padding:12px;">
+                ＋ 新增比賽
+              </button>
+              ${isFinished ? `<div class="hint" style="text-align:center;">遊戲已結束，無法新增</div>` : ""}
+            </form>
 
             <div class="card stack">
               <div class="row">
-                <h2 class="section-title" style="margin:0;">場次列表</h2>
-                ${game.phase === "setup" && game.rounds.length > 0
-                  ? `<button class="btn primary" type="button" data-action="start-game">▶ 開始遊戲</button>`
-                  : ""}
+                <h2 class="section-title" style="margin:0;">比賽列表（${game.rounds.length} 場）</h2>
               </div>
               ${game.rounds.length === 0
-                ? `<div class="hint">尚未新增場次。至少新增 1 場後即可開始遊戲。</div>`
-                : `<div class="stack">${game.rounds.map((round) => {
+                ? `<div class="hint" style="padding:16px 0;text-align:center;">尚未新增比賽 ↑ 請在上方填寫後按新增</div>`
+                : `<div class="stack">${game.rounds.map((round, idx) => {
                     const isEditing = editingRoundId === round.id;
-                    const canEdit = round.status === "pending";
-                    const isCurrent = game.phase === "active" && game.rounds.indexOf(round) === game.currentRoundIdx;
+                    const canEdit   = round.status === "pending";
+                    const isCurrent = game.phase === "active" && idx === game.currentRoundIdx;
+                    const statusTag = round.status === "closed"
+                      ? `<span class="badge closed" style="font-size:11px;">✓ 結束・勝：${escapeHTML(round.winner || "")}</span>`
+                      : isCurrent
+                        ? `<span class="badge open" style="font-size:11px;">進行中</span>`
+                        : round.status === "open"
+                          ? `<span class="badge open" style="font-size:11px;">投票中</span>`
+                          : `<span class="badge" style="font-size:11px;">待開始</span>`;
                     if (isEditing) {
                       return `
-                        <form class="round-item" id="edit-round-form" data-round-id="${escapeHTML(round.id)}" style="flex-direction:column;align-items:stretch;gap:8px;">
-                          <input id="edit-label" type="text" value="${escapeHTML(round.label)}" placeholder="場次名稱">
+                        <form id="edit-round-form" data-round-id="${escapeHTML(round.id)}"
+                              style="background:var(--surface);border:1px solid var(--gold-dim);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+                          <div class="hint" style="color:var(--gold);font-weight:700;">編輯比賽</div>
+                          <input id="edit-label" type="text" value="${escapeHTML(round.label)}" placeholder="比賽名稱">
                           <div class="form-row">
                             <input id="edit-p1" type="text" value="${escapeHTML(round.p1)}" placeholder="選手 A">
                             <input id="edit-p2" type="text" value="${escapeHTML(round.p2)}" placeholder="選手 B">
                           </div>
                           <div class="form-row">
-                            <button class="btn primary" type="submit">儲存</button>
+                            <button class="btn primary" type="submit">✓ 儲存</button>
                             <button class="btn ghost" type="button" data-action="cancel-edit">取消</button>
                           </div>
                         </form>`;
@@ -1385,20 +1394,22 @@
                     return `
                       <div class="round-item">
                         <div style="flex:1;min-width:0;">
-                          <div class="round-name">${escapeHTML(round.label)}${isCurrent ? ' <span class="badge open" style="font-size:11px;padding:2px 8px;">進行中</span>' : ""}</div>
-                          <div class="hint">${escapeHTML(round.p1)} vs ${escapeHTML(round.p2)}${round.status === "closed" ? ` · 勝：${escapeHTML(round.winner || "")}` : ""}</div>
+                          <div class="round-name">${escapeHTML(round.label)}</div>
+                          <div class="hint" style="margin-top:3px;">${escapeHTML(round.p1)} vs ${escapeHTML(round.p2)}</div>
+                          <div style="margin-top:5px;">${statusTag}</div>
                         </div>
-                        <div style="display:flex;gap:6px;flex-shrink:0;">
-                          ${canEdit ? `<button class="btn ghost" type="button" data-action="edit-round" data-round-id="${escapeHTML(round.id)}" style="font-size:12px;padding:4px 10px;">編輯</button>` : ""}
-                          ${canEdit ? `<button class="btn red" type="button" data-action="remove-round" data-round-id="${escapeHTML(round.id)}" style="font-size:12px;padding:4px 10px;">移除</button>` : ""}
-                        </div>
+                        ${canEdit ? `
+                        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">
+                          <button class="btn ghost" type="button" data-action="edit-round"
+                                  data-round-id="${escapeHTML(round.id)}" style="font-size:12px;padding:4px 12px;">✏ 編輯</button>
+                          <button class="btn red" type="button" data-action="remove-round"
+                                  data-round-id="${escapeHTML(round.id)}" style="font-size:12px;padding:4px 12px;">✕ 刪除</button>
+                        </div>` : ""}
                       </div>`;
                   }).join("")}</div>`}
             </div>
           </div>
         `;
-
-        renderQR(getJoinURL(), 200);
       }
 
       function statusBadge(round) {
@@ -1635,48 +1646,64 @@
 
         panel.innerHTML = `
           <div class="stack">
+
             <div class="card">
               <div class="row" style="align-items:center;">
                 <div>
-                  <h2 class="section-title" style="margin:0 0 4px;">直播視窗</h2>
-                  <div class="hint">開啟獨立視窗投影到大螢幕</div>
+                  <h2 class="section-title" style="margin:0 0 4px;">📺 直播視窗</h2>
+                  <div class="hint">開啟獨立視窗，投影到大螢幕</div>
                 </div>
-                <button class="btn blue" type="button" data-action="open-display">📺 開啟</button>
+                <button class="btn blue" type="button" data-action="open-display" style="white-space:nowrap;">開啟視窗</button>
               </div>
-            </div>
-
-            <div class="card">
-              <h2 class="section-title">目前畫面</h2>
-              <div style="font-size:15px;font-weight:700;color:var(--gold);">${modeLabels[displayMode] || displayMode}</div>
-              ${displayMode === "champion" && displayChampion ? `<div class="hint" style="margin-top:4px;">冠軍：${escapeHTML(displayChampion)}</div>` : ""}
             </div>
 
             <div class="card stack">
-              <h2 class="section-title">切換畫面</h2>
-              <div class="grid" style="grid-template-columns:1fr 1fr;">
-                <button class="btn ${displayMode === "qr" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="qr">📱 QR 掃描</button>
-                <button class="btn ${displayMode === "current" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="current">⚔️ 當前比賽</button>
-                <button class="btn ${displayMode === "leaderboard" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="leaderboard">🏅 即時排名</button>
-                <button class="btn ${displayMode === "champion" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="champion">🎉 公布冠軍</button>
+              <div class="row" style="align-items:center;margin-bottom:4px;">
+                <h2 class="section-title" style="margin:0;">切換畫面</h2>
+                <div style="font-size:12px;color:var(--gold);font-weight:700;">${modeLabels[displayMode] || displayMode}</div>
               </div>
-              <button class="btn ${displayMode === "auto" ? "primary" : "ghost"} full" type="button" data-action="disp-mode" data-mode="auto">↺ 自動模式（跟隨遊戲）</button>
+              <div class="grid" style="grid-template-columns:1fr 1fr;">
+                <button class="btn ${displayMode === "qr" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="qr"
+                        style="padding:14px 8px;font-size:14px;">📱<br><span style="font-size:11px;">QR 掃描</span></button>
+                <button class="btn ${displayMode === "current" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="current"
+                        style="padding:14px 8px;font-size:14px;">⚔️<br><span style="font-size:11px;">當前比賽</span></button>
+                <button class="btn ${displayMode === "leaderboard" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="leaderboard"
+                        style="padding:14px 8px;font-size:14px;">🏅<br><span style="font-size:11px;">即時排名</span></button>
+                <button class="btn ${displayMode === "champion" ? "gold" : "ghost"} full" type="button" data-action="disp-mode" data-mode="champion"
+                        style="padding:14px 8px;font-size:14px;">🎉<br><span style="font-size:11px;">公布冠軍</span></button>
+              </div>
+              <button class="btn ${displayMode === "auto" ? "primary" : "ghost"} full" type="button" data-action="disp-mode" data-mode="auto">
+                ↺ 自動模式（跟隨遊戲狀態）
+              </button>
             </div>
 
             ${displayMode === "champion" ? `
             <div class="card stack">
-              <h2 class="section-title">選擇冠軍</h2>
+              <h2 class="section-title">選擇要公布的冠軍</h2>
               ${rankings.length === 0
                 ? `<div class="hint">尚無參與者</div>`
                 : rankings.map(row => `
                   <button class="btn ${displayChampion === row.name ? "gold" : "ghost"} full" type="button"
-                          data-action="disp-champion" data-name="${escapeHTML(row.name)}">
+                          data-action="disp-champion" data-name="${escapeHTML(row.name)}"
+                          style="font-size:15px;padding:12px;">
                     ${rankLabel(row.rank)} ${escapeHTML(row.name)}
                     <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:8px;">${row.correct} 場</span>
                   </button>`).join("")}
             </div>
             ` : ""}
+
+            <div class="card qr-card">
+              <h2 class="section-title">參與 QR Code</h2>
+              <div id="qr-box" class="qr-box"></div>
+              <div style="margin-top:10px;display:flex;gap:8px;">
+                <button class="btn full" type="button" data-action="open-qr">↗ 新視窗顯示 QR</button>
+              </div>
+            </div>
+
           </div>
         `;
+
+        renderQR(getJoinURL(), 180);
       }
 
       function renderParticipant() {
