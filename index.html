@@ -798,6 +798,7 @@
       let displayMode = "auto";   // "auto" | "qr" | "current" | "leaderboard" | "champion"
       let displayChampion = "";
       let editingRoundId = null;
+      let editingTemplateId = null;
 
       const app = document.getElementById("app");
       const banner = document.getElementById("config-banner");
@@ -827,6 +828,14 @@
 
       function deleteTemplate(id) {
         persistTemplates(loadTemplates().filter(t => t.id !== id));
+        setupPanelSignature = "";
+        updateSetupPanel();
+      }
+
+      function renameTemplate(id, newName) {
+        if (!newName) return;
+        persistTemplates(loadTemplates().map(t => t.id === id ? { ...t, name: newName } : t));
+        editingTemplateId = null;
         setupPanelSignature = "";
         updateSetupPanel();
       }
@@ -1087,7 +1096,7 @@
             </div>`;
           const qrBox = document.getElementById("disp-qr-box");
           if (qrBox && typeof QRCode !== "undefined") {
-            const s = Math.min(Math.max(Math.round(window.innerWidth * 0.14), 150), 240);
+            const s = Math.min(Math.max(Math.round(window.innerWidth * 0.25), 250), 500);
             new QRCode(qrBox, { text: getJoinURL(), width: s, height: s, colorDark: "#111", colorLight: "#fff" });
           }
           startDisplayDustMotes();
@@ -1171,7 +1180,7 @@
             </div>`;
           const qrBox = document.getElementById("disp-qr-box");
           if (qrBox && typeof QRCode !== "undefined") {
-            const s = Math.min(Math.max(Math.round(window.innerWidth * 0.14), 150), 240);
+            const s = Math.min(Math.max(Math.round(window.innerWidth * 0.25), 250), 500);
             new QRCode(qrBox, { text: getJoinURL(), width: s, height: s, colorDark: "#111", colorLight: "#fff" });
           }
           startDisplayDustMotes();
@@ -1368,7 +1377,7 @@
         const panel = document.getElementById("host-panel-setup");
         if (!panel) return;
 
-        const sig = `${game.phase}|${game.rounds.map(r => r.id + r.status).join(",")}|${editingRoundId}`;
+        const sig = `${game.phase}|${game.rounds.map(r => r.id + r.status).join(",")}|${editingRoundId}|${editingTemplateId}`;
         if (sig === setupPanelSignature) return;
         setupPanelSignature = sig;
 
@@ -1467,17 +1476,31 @@
                 </div>
                 ${templates.length === 0
                   ? `<div class="hint">尚無範本。新增比賽後按「儲存目前」即可儲存。</div>`
-                  : templates.map(t => `
-                    <div class="round-item">
-                      <div style="flex:1;min-width:0;">
-                        <div class="round-name">${escapeHTML(t.name)}</div>
-                        <div class="hint">${t.rounds.length} 場：${t.rounds.map(r => escapeHTML(r.p1) + " vs " + escapeHTML(r.p2)).join("、")}</div>
-                      </div>
-                      <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">
-                        ${!isFinished ? `<button class="btn blue" type="button" data-action="apply-template" data-template-id="${escapeHTML(t.id)}" style="font-size:12px;padding:4px 12px;">載入</button>` : ""}
-                        <button class="btn red" type="button" data-action="delete-template" data-template-id="${escapeHTML(t.id)}" style="font-size:12px;padding:4px 12px;">刪除</button>
-                      </div>
-                    </div>`).join("")}
+                  : templates.map(t => {
+                    if (editingTemplateId === t.id) {
+                      return `
+                        <form id="rename-template-form" data-template-id="${escapeHTML(t.id)}"
+                              style="display:flex;gap:6px;align-items:center;">
+                          <input id="rename-template-input" type="text" value="${escapeHTML(t.name)}"
+                                 placeholder="範本名稱" style="flex:1;">
+                          <button class="btn primary" type="submit" style="font-size:12px;padding:6px 12px;white-space:nowrap;">✓ 確認</button>
+                          <button class="btn ghost" type="button" data-action="cancel-rename-template"
+                                  style="font-size:12px;padding:6px 10px;">✕</button>
+                        </form>`;
+                    }
+                    return `
+                      <div class="round-item">
+                        <div style="flex:1;min-width:0;">
+                          <div class="round-name">${escapeHTML(t.name)}</div>
+                          <div class="hint">${t.rounds.length} 場：${t.rounds.map(r => escapeHTML(r.p1) + " vs " + escapeHTML(r.p2)).join("、")}</div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">
+                          ${!isFinished ? `<button class="btn blue" type="button" data-action="apply-template" data-template-id="${escapeHTML(t.id)}" style="font-size:12px;padding:4px 12px;">載入</button>` : ""}
+                          <button class="btn ghost" type="button" data-action="edit-template" data-template-id="${escapeHTML(t.id)}" style="font-size:12px;padding:4px 12px;">改名</button>
+                          <button class="btn red" type="button" data-action="delete-template" data-template-id="${escapeHTML(t.id)}" style="font-size:12px;padding:4px 12px;">刪除</button>
+                        </div>
+                      </div>`;
+                  }).join("")
               </div>`;
             })()}
 
@@ -2181,6 +2204,17 @@
         if (action === "disp-mode") setDisplayMode(actionButton.dataset.mode, displayChampion);
         if (action === "disp-champion") setDisplayMode("champion", actionButton.dataset.name);
         if (action === "apply-template") applyTemplate(actionButton.dataset.templateId);
+        if (action === "edit-template") {
+          editingTemplateId = actionButton.dataset.templateId;
+          setupPanelSignature = "";
+          updateSetupPanel();
+          setTimeout(() => document.getElementById("rename-template-input")?.focus(), 50);
+        }
+        if (action === "cancel-rename-template") {
+          editingTemplateId = null;
+          setupPanelSignature = "";
+          updateSetupPanel();
+        }
         if (action === "delete-template") {
           if (confirm("確定刪除這個範本？")) deleteTemplate(actionButton.dataset.templateId);
         }
@@ -2203,6 +2237,12 @@
         if (event.target.id === "round-form") {
           event.preventDefault();
           addRound();
+        }
+        if (event.target.id === "rename-template-form") {
+          event.preventDefault();
+          const id = event.target.dataset.templateId;
+          const name = document.getElementById("rename-template-input")?.value.trim();
+          renameTemplate(id, name);
         }
         if (event.target.id === "save-template-form") {
           event.preventDefault();
