@@ -1119,8 +1119,8 @@
             <div class="disp-root fade-in">
               ${dispBgHTML(false)}
               <div class="disp-content">
-                <div class="disp-main-title">交接萬歲</div>
-                <div class="disp-subtitle">盲眼劍客猜勝負・職棒傳承</div>
+                <div class="disp-main-title">你的杖，你的杆</div>
+                <div class="disp-subtitle">都擊打我・盲眼劍客猜勝負</div>
                 <div class="disp-divider"></div>
                 <div class="disp-join-label">掃描加入・一起見證</div>
                 <div class="disp-qr-wrap" id="disp-qr-box"></div>
@@ -1258,7 +1258,7 @@
 
                 <div style="font-family:'Noto Serif TC',serif;font-size:11px;letter-spacing:0.4em;color:var(--muted);margin-bottom:20px;">— 主持人入口 —</div>
 
-                <div style="font-family:'Noto Serif TC',serif;font-size:40px;font-weight:900;color:var(--gold);letter-spacing:0.06em;line-height:1;">交接萬歲</div>
+                <div style="font-family:'Noto Serif TC',serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:0.06em;line-height:1.2;text-align:center;">你的杖，你的杆，都擊打我</div>
 
                 <div style="width:32px;height:1px;background:var(--border);margin:28px 0;"></div>
 
@@ -1435,12 +1435,13 @@
           const displayBtn = `<div style="text-align:right;margin-bottom:8px;"><button class="btn ghost" type="button" data-action="open-display" style="font-size:12px;letter-spacing:0.06em;">📺 開啟直播視窗</button></div>`;
 
           if (game.phase === "setup") {
-            panel.innerHTML = `<div class="empty-state">請先在設定頁開始遊戲</div>`;
+            panel.innerHTML = `<div class="empty-state">請先到「場次」Tab 新增比賽，再按開始遊戲</div>`;
           } else if (game.phase === "finished") {
             panel.innerHTML = displayBtn + `<div class="empty-state">🏁 遊戲已結束，查看排名頁</div>${completedRoundsHTML()}`;
           } else if (!round) {
             panel.innerHTML = displayBtn + `<div class="empty-state">找不到目前場次，請重置後重新開始。</div>`;
           } else {
+            const isLastRound = game.currentRoundIdx >= game.rounds.length - 1;
             panel.innerHTML = displayBtn + `
               <div class="stack">
                 <div class="card current-round">
@@ -1450,7 +1451,9 @@
                 </div>
 
                 ${round.status === "pending" ? `
-                  <button class="btn blue full" type="button" data-action="open-round">🗳 開啟投票</button>
+                  <button class="btn blue full" type="button" data-action="open-round" style="font-size:15px;padding:13px;">
+                    🗳 開啟投票
+                  </button>
                 ` : ""}
 
                 ${round.status === "open" ? `
@@ -1462,12 +1465,23 @@
                     </div>
                   </div>
                   <div class="card stack">
-                    <div class="hint" style="text-align:center;">標記本場勝者</div>
+                    <div class="hint" style="text-align:center;">標記本場勝者（投影畫面會自動顯示勝者）</div>
                     <div class="form-row">
-                      <button class="btn primary" type="button" data-action="mark-winner" data-winner="${escapeHTML(round.p1)}">🏆 ${escapeHTML(round.p1)}</button>
-                      <button class="btn red" type="button" data-action="mark-winner" data-winner="${escapeHTML(round.p2)}">🏆 ${escapeHTML(round.p2)}</button>
+                      <button class="btn primary" type="button" data-action="mark-winner" data-winner="${escapeHTML(round.p1)}" style="font-size:15px;padding:13px;">🏆 ${escapeHTML(round.p1)}</button>
+                      <button class="btn red" type="button" data-action="mark-winner" data-winner="${escapeHTML(round.p2)}" style="font-size:15px;padding:13px;">🏆 ${escapeHTML(round.p2)}</button>
                     </div>
                   </div>
+                ` : ""}
+
+                ${round.status === "closed" ? `
+                  <div class="card" style="text-align:center;border-color:var(--gold-dim);background:#171403;">
+                    <div class="hint" style="margin-bottom:8px;">本場勝者</div>
+                    <div style="font-family:'Noto Serif TC',serif;font-size:28px;font-weight:900;color:var(--gold);">🏆 ${escapeHTML(round.winner)}</div>
+                    <div class="hint" style="margin-top:8px;">投影畫面正在顯示勝者・參與者已看到預測結果</div>
+                  </div>
+                  <button class="btn ${isLastRound ? "gold" : "blue"} full" type="button" data-action="next-round" style="font-size:16px;padding:14px;">
+                    ${isLastRound ? "🎉 公布最終排名" : "▶ 下一場"}
+                  </button>
                 ` : ""}
 
                 <div id="completed-rounds">${completedRoundsHTML()}</div>
@@ -1720,7 +1734,7 @@
               <div class="participant-page fade-in">
                 <main class="participant-main">
                   <form id="join-form" class="card join-card stack">
-                    <h1>⚔️ 職棒傳承</h1>
+                    <h1 style="font-size:22px;letter-spacing:0.04em;">你的杖，你的杆，都擊打我</h1>
                     <input id="join-name" type="text" placeholder="輸入你的名字" autocomplete="name" autofocus>
                     <button class="btn gold full" type="submit">加入 →</button>
                   </form>
@@ -1874,7 +1888,7 @@
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>職棒傳承 QR Code</title>
+            <title>你的杖，你的杆，都擊打我 QR Code</title>
             <style>
               * { box-sizing: border-box; }
               body {
@@ -1897,7 +1911,7 @@
             </style>
           </head>
           <body>
-            <h1>職棒傳承</h1>
+            <h1 style="font-size:18px;">你的杖，你的杆，都擊打我</h1>
             <div id="qr"></div>
             <p>${escapeHTML(joinURL)}</p>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
@@ -1976,6 +1990,8 @@
       async function setDisplayMode(mode, championName = "") {
         displayMode = mode;
         displayChampion = championName;
+        // 立即更新 UI，不等 Firebase 回應
+        updateDisplayPanel();
         await db.ref("/display").set({ mode, championName });
       }
 
@@ -1995,13 +2011,20 @@
       async function markWinner(winner) {
         const round = getCurrentRound();
         if (!round || round.status !== "open") return;
+        // 只關閉這場，不立即推進 —— 讓勝者畫面顯示給所有人看
         const rounds = game.rounds.map((item, index) => (
           index === game.currentRoundIdx ? { ...item, status: "closed", winner } : item
         ));
+        await saveGame({ ...game, rounds });
+      }
+
+      async function nextRound() {
+        const round = getCurrentRound();
+        if (!round || round.status !== "closed") return;
         const nextIdx = game.currentRoundIdx + 1;
-        const phase = nextIdx >= rounds.length ? "finished" : "active";
+        const phase = nextIdx >= game.rounds.length ? "finished" : "active";
         if (phase === "finished") hostTab = "leaderboard";
-        await saveGame({ phase, currentRoundIdx: nextIdx, rounds });
+        await saveGame({ phase, currentRoundIdx: nextIdx, rounds: game.rounds });
       }
 
       async function resetGame() {
@@ -2079,6 +2102,7 @@
         if (action === "start-game") startGame();
         if (action === "open-round") openRound();
         if (action === "mark-winner") markWinner(actionButton.dataset.winner);
+        if (action === "next-round") nextRound();
         if (action === "reset") resetGame();
         if (action === "vote") vote(actionButton.dataset.pick);
         if (action === "disp-mode") setDisplayMode(actionButton.dataset.mode, displayChampion);
