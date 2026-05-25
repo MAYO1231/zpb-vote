@@ -801,6 +801,48 @@
 
       const app = document.getElementById("app");
       const banner = document.getElementById("config-banner");
+      const TEMPLATES_KEY = "zpb-round-templates";
+
+      function loadTemplates() {
+        try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || "[]"); }
+        catch { return []; }
+      }
+
+      function persistTemplates(list) {
+        localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
+      }
+
+      function saveCurrentAsTemplate(name) {
+        if (game.rounds.length === 0) { alert("目前沒有比賽可儲存"); return; }
+        const list = loadTemplates();
+        list.push({
+          id: `t_${Date.now()}`,
+          name: name || `範本 ${list.length + 1}`,
+          rounds: game.rounds.map(r => ({ label: r.label, p1: r.p1, p2: r.p2 }))
+        });
+        persistTemplates(list);
+        setupPanelSignature = "";
+        updateSetupPanel();
+      }
+
+      function deleteTemplate(id) {
+        persistTemplates(loadTemplates().filter(t => t.id !== id));
+        setupPanelSignature = "";
+        updateSetupPanel();
+      }
+
+      async function applyTemplate(id) {
+        const tpl = loadTemplates().find(t => t.id === id);
+        if (!tpl) return;
+        if (game.rounds.length > 0 &&
+            !confirm(`載入「${tpl.name}」後，目前 ${game.rounds.length} 場比賽將被取代，確定嗎？`)) return;
+        const rounds = tpl.rounds.map(r => ({
+          id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          label: r.label, p1: r.p1, p2: r.p2,
+          status: "pending", winner: null
+        }));
+        await saveGame({ phase: "setup", currentRoundIdx: 0, rounds });
+      }
 
       function getMode() {
         return new URLSearchParams(location.search).get("mode");
@@ -1363,7 +1405,7 @@
                 <h2 class="section-title" style="margin:0;">比賽列表（${game.rounds.length} 場）</h2>
               </div>
               ${game.rounds.length === 0
-                ? `<div class="hint" style="padding:16px 0;text-align:center;">尚未新增比賽 ↑ 請在上方填寫後按新增</div>`
+                ? `<div class="hint" style="padding:16px 0;text-align:center;">尚未新增比賽 ↑ 請在上方填寫後按新增，或從下方載入範本</div>`
                 : `<div class="stack">${game.rounds.map((round, idx) => {
                     const isEditing = editingRoundId === round.id;
                     const canEdit   = round.status === "pending";
@@ -1408,6 +1450,37 @@
                       </div>`;
                   }).join("")}</div>`}
             </div>
+            ${(() => {
+              const templates = loadTemplates();
+              return `
+              <div class="card stack">
+                <div class="row">
+                  <h2 class="section-title" style="margin:0;">📋 已儲存範本</h2>
+                  ${game.rounds.length > 0 && !isFinished ? `
+                    <form id="save-template-form" style="display:flex;gap:6px;align-items:center;">
+                      <input id="template-name-input" type="text" placeholder="範本名稱（選填）"
+                             style="width:130px;padding:6px 10px;font-size:13px;">
+                      <button class="btn ghost" type="submit" style="white-space:nowrap;font-size:13px;padding:6px 12px;">
+                        ＋ 儲存目前
+                      </button>
+                    </form>` : ""}
+                </div>
+                ${templates.length === 0
+                  ? `<div class="hint">尚無範本。新增比賽後按「儲存目前」即可儲存。</div>`
+                  : templates.map(t => `
+                    <div class="round-item">
+                      <div style="flex:1;min-width:0;">
+                        <div class="round-name">${escapeHTML(t.name)}</div>
+                        <div class="hint">${t.rounds.length} 場：${t.rounds.map(r => escapeHTML(r.p1) + " vs " + escapeHTML(r.p2)).join("、")}</div>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">
+                        ${!isFinished ? `<button class="btn blue" type="button" data-action="apply-template" data-template-id="${escapeHTML(t.id)}" style="font-size:12px;padding:4px 12px;">載入</button>` : ""}
+                        <button class="btn red" type="button" data-action="delete-template" data-template-id="${escapeHTML(t.id)}" style="font-size:12px;padding:4px 12px;">刪除</button>
+                      </div>
+                    </div>`).join("")}
+              </div>`;
+            })()}
+
           </div>
         `;
       }
@@ -2107,6 +2180,10 @@
         if (action === "vote") vote(actionButton.dataset.pick);
         if (action === "disp-mode") setDisplayMode(actionButton.dataset.mode, displayChampion);
         if (action === "disp-champion") setDisplayMode("champion", actionButton.dataset.name);
+        if (action === "apply-template") applyTemplate(actionButton.dataset.templateId);
+        if (action === "delete-template") {
+          if (confirm("確定刪除這個範本？")) deleteTemplate(actionButton.dataset.templateId);
+        }
       });
 
       document.addEventListener("submit", (event) => {
@@ -2126,6 +2203,12 @@
         if (event.target.id === "round-form") {
           event.preventDefault();
           addRound();
+        }
+        if (event.target.id === "save-template-form") {
+          event.preventDefault();
+          const nameInput = document.getElementById("template-name-input");
+          saveCurrentAsTemplate(nameInput ? nameInput.value.trim() : "");
+          if (nameInput) nameInput.value = "";
         }
         if (event.target.id === "edit-round-form") {
           event.preventDefault();
