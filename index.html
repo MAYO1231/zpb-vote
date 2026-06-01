@@ -1055,20 +1055,25 @@
         textVoteGroups = applyMerges(rawGroups, merges).sort((a, b) => b.count - a.count);
       }
 
+      function nominationMax() {
+        return Math.min(Math.max(parseInt(textVoteData && textVoteData.maxPerPerson) || 2, 1), 5);
+      }
+
       function nominationHTML() {
         const question = (textVoteData && textVoteData.question) || '請提名想參加比賽的人';
-        const e0 = (textVoteEntries[`${participantName}_0`] || {}).text || '';
-        const e1 = (textVoteEntries[`${participantName}_1`] || {}).text || '';
-        const submitted = e0 || e1;
+        const max = nominationMax();
+        const values = Array.from({ length: max }, (_, i) =>
+          (textVoteEntries[`${participantName}_${i}`] || {}).text || '');
+        const submitted = values.some(v => v);
+        const inputs = values.map((val, i) => `
+                <input class="nom-input" data-slot="${i}" type="text"
+                  placeholder="${i === 0 ? '提名人選（必填）' : `第 ${i + 1} 位（選填）`}"
+                  value="${escapeHTML(val)}" autocomplete="off"${i === 0 ? ' required' : ''}>`).join('');
         return `
           <div class="card stack nom-card" style="margin-bottom:12px;">
             <h2 style="font-size:16px;">📝 ${escapeHTML(question)}</h2>
             <form id="nom-form">
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                <input id="nom-input-0" type="text" placeholder="提名人選（必填）"
-                  value="${escapeHTML(e0)}" autocomplete="off" required>
-                <input id="nom-input-1" type="text" placeholder="第二提名（選填）"
-                  value="${escapeHTML(e1)}" autocomplete="off">
+              <div style="display:flex;flex-direction:column;gap:8px;">${inputs}
                 <button class="btn ${submitted ? 'primary' : 'blue'} full" type="submit">
                   ${submitted ? '✓ 更新提名' : '送出提名'}
                 </button>
@@ -1184,8 +1189,9 @@
 
       async function openTextVote() {
         const qEl = document.getElementById('tv-question-input');
+        const mEl = document.getElementById('tv-max-input');
         const question = (qEl && qEl.value.trim()) || '請提名想參加比賽的人';
-        const maxPerPerson = 2;
+        const maxPerPerson = Math.min(Math.max(parseInt(mEl && mEl.value) || 2, 1), 5);
         await db.ref('/textVote').set({ phase: 'open', question, maxPerPerson, merges: {} });
       }
 
@@ -1259,6 +1265,12 @@
         await db.ref(`/textVoteEntries/${key}`).set({
           voter: participantName, text: text.trim(), slot, timestamp: Date.now()
         });
+      }
+
+      async function removeNomination(slot) {
+        if (!participantName) return;
+        if (!textVoteEntries[`${participantName}_${slot}`]) return;
+        await db.ref(`/textVoteEntries/${participantName}_${slot}`).remove();
       }
 
       function render() {
@@ -2659,11 +2671,15 @@
         }
         if (event.target.id === "nom-form") {
           event.preventDefault();
-          const v0 = (document.getElementById('nom-input-0')?.value || '').trim();
-          const v1 = (document.getElementById('nom-input-1')?.value || '').trim();
-          if (!v0) return;
-          submitNomination(0, v0);
-          if (v1) submitNomination(1, v1);
+          const inputs = Array.from(event.target.querySelectorAll('.nom-input'));
+          if (inputs.length === 0) return;
+          if (!inputs[0].value.trim()) return;
+          inputs.forEach((inp) => {
+            const slot = parseInt(inp.dataset.slot);
+            const val = inp.value.trim();
+            if (val) submitNomination(slot, val);
+            else removeNomination(slot);
+          });
         }
         if (event.target.id === "join-form") {
           event.preventDefault();
