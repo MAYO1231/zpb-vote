@@ -761,6 +761,40 @@
         width: 100%;
       }
     }
+
+    /* ── Text Vote ────────────────────────────────────────────────── */
+    .text-vote-group {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .text-vote-group.top { border-color: var(--gold-dim); }
+    .tv-rank { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+    .tv-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .tv-variants { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .tv-count { font-size: 20px; font-weight: 900; color: var(--gold); min-width: 32px; text-align: right; }
+    .tv-bar { height: 4px; background: var(--gold); border-radius: 2px; opacity: 0.7; transition: width 0.4s ease; margin-top: 4px; }
+    .nom-card { border-color: rgba(232,184,75,0.25) !important; }
+    .nom-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+    /* ── Display nomination ─────────────────────────────────────── */
+    .disp-nom-title {
+      font-size: clamp(20px, 3vw, 36px); color: var(--gold);
+      font-family: 'Noto Serif TC', serif; font-weight: 900;
+      text-align: center; margin-bottom: 28px;
+    }
+    .disp-nom-list { display: flex; flex-direction: column; gap: 10px; max-width: 700px; width: 100%; }
+    .disp-nom-row {
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 20px; background: rgba(255,255,255,0.04);
+      border-radius: 10px; border: 1px solid rgba(232,184,75,0.15);
+    }
+    .disp-nom-row.is-top { border-color: rgba(232,184,75,0.5); background: rgba(232,184,75,0.07); }
+    .disp-nom-medal { font-size: 22px; width: 30px; text-align: center; }
+    .disp-nom-name-wrap { flex: 1; min-width: 0; }
+    .disp-nom-name { font-size: clamp(18px, 2.5vw, 28px); font-weight: 700; color: var(--text); }
+    .disp-nom-bar-wrap { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 4px; }
+    .disp-nom-bar-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.5s ease; }
+    .disp-nom-count { font-size: clamp(20px, 3vw, 36px); font-weight: 900; color: var(--gold); }
+    .disp-nom-unit { font-size: 14px; color: var(--muted); margin-left: 3px; }
   </style>
 </head>
 <body>
@@ -794,7 +828,12 @@
       let voteChartRoundId = "";
       let qrSignature = "";
       let dustRaf = null;
-      let displayMode = "auto";   // "auto" | "qr" | "current" | "leaderboard" | "champion"
+      let textVoteData = null;
+      let textVoteEntries = {};
+      let textVoteGroups = [];
+      let openAiKey = localStorage.getItem('openai_key') || '';
+      let participantView = 'game';   // 'game' | 'nom'
+      let displayMode = "auto";   // "auto" | "qr" | "current" | "leaderboard" | "champion" | "textVote"
       let displayChampion = "";
       let editingRoundId = null;
       let editingTemplateId = null;
@@ -980,6 +1019,249 @@
         element.style.display = visible ? "" : "none";
       }
 
+      // ── Text Vote utilities ──────────────────────────────────────
+      function localGroupEntries(entries) {
+        const counts = {};
+        for (const e of entries) {
+          const t = (e.text || '').trim();
+          if (!t) continue;
+          counts[t] = (counts[t] || 0) + 1;
+        }
+        return Object.entries(counts).map(([text, count]) => ({ canonical: text, variants: [text], count }));
+      }
+
+      function applyMerges(rawGroups, merges) {
+        if (!merges || !Object.keys(merges).length) return rawGroups;
+        const textToCanonical = {};
+        for (const [canonical, variants] of Object.entries(merges)) {
+          for (const v of (variants || [])) textToCanonical[v] = canonical;
+        }
+        const result = {};
+        for (const g of rawGroups) {
+          const mapped = textToCanonical[g.canonical] || g.canonical;
+          if (!result[mapped]) result[mapped] = { canonical: mapped, variants: [], count: 0 };
+          result[mapped].count += g.count;
+          for (const v of g.variants) {
+            if (!result[mapped].variants.includes(v)) result[mapped].variants.push(v);
+          }
+        }
+        return Object.values(result).sort((a, b) => b.count - a.count);
+      }
+
+      function computeTextVoteGroups() {
+        const entries = Object.values(textVoteEntries).filter(e => e && e.text);
+        const rawGroups = localGroupEntries(entries);
+        const merges = textVoteData && textVoteData.merges ? textVoteData.merges : {};
+        textVoteGroups = applyMerges(rawGroups, merges).sort((a, b) => b.count - a.count);
+      }
+
+      function nominationHTML() {
+        const question = (textVoteData && textVoteData.question) || '請提名想參加比賽的人';
+        const e0 = (textVoteEntries[`${participantName}_0`] || {}).text || '';
+        const e1 = (textVoteEntries[`${participantName}_1`] || {}).text || '';
+        const submitted = e0 || e1;
+        return `
+          <div class="card stack nom-card" style="margin-bottom:12px;">
+            <h2 style="font-size:16px;">📝 ${escapeHTML(question)}</h2>
+            <form id="nom-form">
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <input id="nom-input-0" type="text" placeholder="提名人選（必填）"
+                  value="${escapeHTML(e0)}" autocomplete="off" required>
+                <input id="nom-input-1" type="text" placeholder="第二提名（選填）"
+                  value="${escapeHTML(e1)}" autocomplete="off">
+                <button class="btn ${submitted ? 'primary' : 'blue'} full" type="submit">
+                  ${submitted ? '✓ 更新提名' : '送出提名'}
+                </button>
+              </div>
+            </form>
+          </div>`;
+      }
+
+      function textVoteHostHTML() {
+        const tvPhase = (textVoteData && textVoteData.phase) || 'inactive';
+        const maxCount = (textVoteGroups.length > 0 ? textVoteGroups[0].count : 1) || 1;
+        const totalVotes = Object.values(textVoteEntries).filter(e => e && e.text).length;
+
+        if (tvPhase === 'inactive') {
+          return `
+            <div class="card stack" style="margin-top:14px;">
+              <h2 class="section-title">📝 文字提名環節</h2>
+              <form id="tv-settings-form">
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <input id="tv-question-input" type="text" placeholder="提問文字" value="請提名想參加比賽的人" style="font-size:14px;">
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    <label style="font-size:13px;color:var(--muted);white-space:nowrap;">每人可提名</label>
+                    <input id="tv-max-input" type="number" min="1" max="5" value="2" style="width:56px;font-size:13px;">
+                    <label style="font-size:13px;color:var(--muted);white-space:nowrap;">位</label>
+                    <button class="btn blue" type="submit" style="margin-left:auto;">開始提名</button>
+                  </div>
+                  <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:2px;">
+                    <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">
+                      🤖 AI 自動分類（選填）— Key 只存在你的瀏覽器，不會上傳到後台
+                    </label>
+                    <div style="display:flex;gap:6px;">
+                      <input id="openai-key-input" type="password" placeholder="sk-..." value="${escapeHTML(openAiKey)}"
+                        style="flex:1;font-size:12px;padding:5px 8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;"
+                        autocomplete="off">
+                      <button class="btn ghost" type="button" data-action="save-openai-key"
+                        style="font-size:12px;padding:5px 10px;white-space:nowrap;">儲存 Key</button>
+                    </div>
+                    ${openAiKey ? `<div style="font-size:11px;color:var(--green);margin-top:3px;">✓ Key 已儲存於本機</div>` : ''}
+                  </div>
+                </div>
+              </form>
+            </div>`;
+        }
+
+        const groupsHTML = textVoteGroups.length === 0
+          ? `<div class="hint" style="text-align:center;padding:8px;">等待第一票...</div>`
+          : textVoteGroups.map((g, i) => {
+              const others = textVoteGroups.filter(og => og.canonical !== g.canonical);
+              const mergeOpts = others.map(og =>
+                `<option value="${escapeHTML(og.canonical)}">→「${escapeHTML(og.canonical)}」(${og.count}票)</option>`
+              ).join('');
+              return `
+                <div class="text-vote-group ${i < 3 ? 'top' : ''}">
+                  <div class="tv-rank">${rankLabel(i + 1)}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div class="tv-name">${escapeHTML(g.canonical)}</div>
+                    ${g.variants.length > 1
+                      ? `<div class="tv-variants">含：${g.variants.map(v => escapeHTML(v)).join('・')}</div>`
+                      : ''}
+                    <div class="tv-bar" style="width:${Math.round(g.count / maxCount * 100)}%"></div>
+                  </div>
+                  <div class="tv-count">${g.count}</div>
+                  ${tvPhase === 'open' && others.length > 0
+                    ? `<select class="tv-merge-select" data-source="${escapeHTML(g.canonical)}"
+                        style="font-size:11px;padding:2px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:4px;max-width:110px;">
+                        <option value="">合併...</option>${mergeOpts}
+                      </select>`
+                    : ''}
+                  ${tvPhase === 'closed'
+                    ? `<input type="checkbox" class="tv-candidate-check" data-name="${escapeHTML(g.canonical)}"
+                        style="width:16px;height:16px;cursor:pointer;accent-color:var(--gold);">`
+                    : ''}
+                </div>`;
+            }).join('');
+
+        if (tvPhase === 'open') {
+          return `
+            <div class="card stack" style="margin-top:14px;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h2 class="section-title" style="margin-bottom:0;flex:1;">
+                  📝 ${escapeHTML(textVoteData.question || '提名投票')}
+                  <span class="badge open" style="font-size:11px;margin-left:6px;">進行中</span>
+                </h2>
+                <button class="btn red" type="button" data-action="close-text-vote"
+                  style="font-size:12px;padding:4px 10px;min-height:28px;">結束提名</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <div class="hint" style="flex:1;">${totalVotes} 票・${participants.length} 人已加入</div>
+                <button class="btn ghost" id="ai-classify-btn" type="button" data-action="ai-classify"
+                  style="font-size:12px;padding:4px 10px;min-height:28px;white-space:nowrap;">
+                  🤖 AI 分類${openAiKey ? '' : ' (需設定 Key)'}
+                </button>
+              </div>
+              <div class="stack" style="gap:6px;">${groupsHTML}</div>
+            </div>`;
+        }
+
+        // closed
+        return `
+          <div class="card stack" style="margin-top:14px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <h2 class="section-title" style="margin-bottom:0;flex:1;">
+                📝 ${escapeHTML(textVoteData.question || '提名投票')}
+                <span class="badge closed" style="font-size:11px;margin-left:6px;">已結束</span>
+              </h2>
+              <button class="btn blue" type="button" data-action="publish-candidates"
+                style="font-size:12px;padding:4px 10px;min-height:28px;">公布候選名單 ↗</button>
+            </div>
+            <div class="hint">勾選要公布的候選人（會切換投影到提名頁）</div>
+            <div class="stack" style="gap:6px;">${groupsHTML}</div>
+          </div>`;
+      }
+
+      async function openTextVote() {
+        const q = (document.getElementById('tv-question-input') || {}).value;
+        const m = (document.getElementById('tv-max-input') || {}).value;
+        const question = (q && q.trim()) || '請提名想參加比賽的人';
+        const maxPerPerson = parseInt(m) || 2;
+        await db.ref('/textVote').set({ phase: 'open', question, maxPerPerson, merges: {} });
+      }
+
+      async function closeTextVote() {
+        if (!confirm('確定結束提名？結束後參與者將無法繼續提名。')) return;
+        await db.ref('/textVote/phase').set('closed');
+      }
+
+      async function publishCandidates() {
+        const checks = document.querySelectorAll('.tv-candidate-check:checked');
+        const names = Array.from(checks).map(c => c.dataset.name);
+        if (names.length === 0) { alert('請至少勾選一位候選人'); return; }
+        await db.ref('/textVote/candidates').set(names);
+        await setDisplayMode('textVote');
+      }
+
+      async function aiReclassify() {
+        const keyInput = document.getElementById('openai-key-input');
+        const key = (keyInput && keyInput.value.trim()) || openAiKey;
+        if (!key) { alert('請輸入 OpenAI API Key'); return; }
+        openAiKey = key;
+        localStorage.setItem('openai_key', key);
+        const entries = Object.values(textVoteEntries).filter(e => e && e.text);
+        const uniqueNames = [...new Set(entries.map(e => e.text.trim()).filter(Boolean))];
+        if (uniqueNames.length === 0) { alert('目前沒有提名資料'); return; }
+        const btn = document.getElementById('ai-classify-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'AI 分析中...'; }
+        try {
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content:
+                `你是名字分類助理。以下是投票名單，每個名字可能是同一人的不同寫法（有無姓氏、同音異字、小名）。\n請將可能同一人的名字歸在一組，為每組選最完整的代表名稱。明顯不同人則分開放。\n只回覆純 JSON：{"groups":[{"canonical":"代表名稱","variants":["名字1","名字2"]}]}\n\n名字：\n${uniqueNames.join('\n')}`
+              }],
+              response_format: { type: 'json_object' }
+            })
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error?.message || `API 錯誤 ${res.status}`);
+          }
+          const data = await res.json();
+          const { groups } = JSON.parse(data.choices[0].message.content);
+          const merges = {};
+          for (const g of (groups || [])) {
+            if (g.variants && g.variants.length > 0) merges[g.canonical] = g.variants;
+          }
+          await db.ref('/textVote/merges').set(merges);
+        } catch (err) {
+          alert('AI 分類失敗：' + err.message);
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 重新分類'; }
+        }
+      }
+
+      async function mergeTextVoteGroups(source, target) {
+        const merges = { ...((textVoteData && textVoteData.merges) || {}) };
+        const sourceGroup = textVoteGroups.find(g => g.canonical === source);
+        const sourceVariants = sourceGroup ? sourceGroup.variants : [source];
+        const existing = merges[target] || [];
+        merges[target] = [...new Set([...existing, ...sourceVariants, source])];
+        delete merges[source];
+        await db.ref('/textVote/merges').set(merges);
+      }
+
+      async function submitNomination(slot, text) {
+        if (!participantName || !text.trim()) { alert('請輸入名字'); return; }
+        const key = `${participantName}_${slot}`;
+        await db.ref(`/textVoteEntries/${key}`).set({
+          voter: participantName, text: text.trim(), slot, timestamp: Date.now()
+        });
+      }
+
       function render() {
         if (getMode() === "display") {
           renderDisplay();
@@ -1126,6 +1408,53 @@
                      <div class="disp-winner-name">${escapeHTML(name)}</div>
                      <div class="disp-winner-sub">恭喜獲得最終冠軍！</div>`
                   : `<div class="disp-waiting-text">等待公布冠軍...</div>`}
+              </div>
+            </div>`;
+          startDisplayDustMotes();
+          return;
+        }
+
+        if (displayMode === "textVote") {
+          computeTextVoteGroups();
+          const tvQuestion = (textVoteData && textVoteData.question) || '提名投票';
+          const tvCandidates = textVoteData && textVoteData.candidates;
+          const tvPhase = textVoteData && textVoteData.phase;
+          let listItems;
+          if (tvPhase === 'closed' && tvCandidates && tvCandidates.length > 0) {
+            listItems = tvCandidates.map((name, i) => {
+              const g = textVoteGroups.find(x => x.canonical === name);
+              const count = g ? g.count : '?';
+              return `
+                <div class="disp-nom-row ${i === 0 ? 'is-top' : ''}">
+                  <div class="disp-nom-medal">${rankLabel(i + 1)}</div>
+                  <div class="disp-nom-name-wrap">
+                    <div class="disp-nom-name">${escapeHTML(name)}</div>
+                  </div>
+                  <div><span class="disp-nom-count">${count}</span><span class="disp-nom-unit">票</span></div>
+                </div>`;
+            }).join('');
+          } else if (textVoteGroups.length === 0) {
+            listItems = `<div class="disp-waiting-text">等待提名中...</div>`;
+          } else {
+            const maxC = textVoteGroups[0].count || 1;
+            listItems = textVoteGroups.slice(0, 8).map((g, i) => `
+              <div class="disp-nom-row ${i === 0 ? 'is-top' : ''}">
+                <div class="disp-nom-medal">${rankLabel(i + 1)}</div>
+                <div class="disp-nom-name-wrap">
+                  <div class="disp-nom-name">${escapeHTML(g.canonical)}</div>
+                  <div class="disp-nom-bar-wrap">
+                    <div class="disp-nom-bar-fill" style="width:${Math.round(g.count / maxC * 100)}%"></div>
+                  </div>
+                </div>
+                <div><span class="disp-nom-count">${g.count}</span><span class="disp-nom-unit">票</span></div>
+              </div>`).join('');
+          }
+          app.innerHTML = `
+            <div class="disp-root fade-in">
+              ${dispBgHTML(false)}
+              <div class="disp-content">
+                <div class="disp-nom-title">📝 ${escapeHTML(tvQuestion)}</div>
+                <div class="disp-nom-list">${listItems}</div>
               </div>
             </div>`;
           startDisplayDustMotes();
@@ -1516,14 +1845,15 @@
         if (!panel) return;
 
         const round = getCurrentRound();
-        const signature = `${game.phase}|${game.currentRoundIdx}|${round ? round.id : ""}|${round ? round.status : ""}|${round ? round.winner : ""}|${game.rounds.length}|${displayMode}|${displayChampion}`;
+        const tvSig = textVoteData ? `${textVoteData.phase}|${textVoteGroups.length}|${textVoteGroups.reduce((s,g)=>s+g.count,0)}` : 'null';
+        const signature = `${game.phase}|${game.currentRoundIdx}|${round ? round.id : ""}|${round ? round.status : ""}|${round ? round.winner : ""}|${game.rounds.length}|${displayMode}|${displayChampion}|${tvSig}`;
 
         if (signature !== gamePanelSignature) {
           gamePanelSignature = signature;
           destroyVoteChart();
 
           const rankings = getRankings();
-          const modeLabels = { auto:"自動", qr:"QR 掃描", current:"當前比賽", leaderboard:"即時排名", champion:"公布冠軍" };
+          const modeLabels = { auto:"自動", qr:"QR 掃描", current:"當前比賽", leaderboard:"即時排名", champion:"公布冠軍", textVote:"提名投票" };
 
           // ── 頂部直播控制列 ─────────────────────────────────────────
           const displayBar = `
@@ -1536,6 +1866,7 @@
                   <button class="btn ${displayMode==="current"?"gold":"ghost"}" type="button" data-action="disp-mode" data-mode="current" style="font-size:11px;padding:4px 9px;min-height:28px;">⚔️ 當前</button>
                   <button class="btn ${displayMode==="leaderboard"?"gold":"ghost"}" type="button" data-action="disp-mode" data-mode="leaderboard" style="font-size:11px;padding:4px 9px;min-height:28px;">🏅 排名</button>
                   <button class="btn ${displayMode==="champion"?"gold":"ghost"}" type="button" data-action="disp-mode" data-mode="champion" style="font-size:11px;padding:4px 9px;min-height:28px;">🎉 冠軍</button>
+                  <button class="btn ${displayMode==="textVote"?"gold":"ghost"}" type="button" data-action="disp-mode" data-mode="textVote" style="font-size:11px;padding:4px 9px;min-height:28px;">📝 提名</button>
                 </div>
                 <button class="btn ghost" type="button" data-action="open-display" style="font-size:11px;padding:4px 10px;min-height:28px;white-space:nowrap;">開視窗 ↗</button>
               </div>
@@ -1556,7 +1887,7 @@
           if (game.phase === "setup") {
             panel.innerHTML = displayBar + `<div class="empty-state">請先到「場次」Tab 新增比賽，再按開始遊戲</div>`;
           } else if (game.phase === "finished") {
-            panel.innerHTML = displayBar + `<div class="empty-state">🏁 遊戲已結束，查看排名頁</div>${completedRoundsHTML()}`;
+            panel.innerHTML = displayBar + `<div class="empty-state">🏁 遊戲已結束，查看排名頁</div>${completedRoundsHTML()}${textVoteHostHTML()}`;
           } else if (!round) {
             panel.innerHTML = displayBar + `<div class="empty-state">找不到目前場次，請重置後重新開始。</div>`;
           } else {
@@ -1871,14 +2202,31 @@
         const myCorrect = correctCountFor(participantName);
         const totalClosed = closedRounds().length;
 
+        const tvOpen = textVoteData && textVoteData.phase === 'open';
+        if (!tvOpen && participantView === 'nom') participantView = 'game';
+
+        const nomBtn = tvOpen ? `
+          <button class="btn ${participantView === 'nom' ? 'gold' : 'ghost'}" type="button"
+            data-action="nom-view"
+            style="font-size:12px;padding:4px 10px;min-height:28px;white-space:nowrap;">
+            📝 提名
+          </button>` : '';
+
+        const mainContent = participantView === 'nom'
+          ? nominationHTML()
+          : participantContent(round);
+
         app.innerHTML = `
           <div class="participant-page fade-in">
             <header class="participant-header">
               <div class="brand">你的杖，你的杆，都擊打我<small>${escapeHTML(participantName)}</small></div>
-              <div class="score">${myCorrect}<span class="muted">/${totalClosed}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                ${nomBtn}
+                <div class="score">${myCorrect}<span class="muted">/${totalClosed}</span></div>
+              </div>
             </header>
             <main class="participant-main">
-              ${participantContent(round)}
+              ${mainContent}
             </main>
           </div>
         `;
@@ -2157,7 +2505,9 @@
           game: null,
           participants: null,
           predictions: null,
-          display: null
+          display: null,
+          textVote: null,
+          textVoteEntries: null
         });
       }
 
@@ -2225,8 +2575,25 @@
         if (action === "next-round") nextRound();
         if (action === "reset") resetGame();
         if (action === "vote") vote(actionButton.dataset.pick);
+        if (action === "nom-view") {
+          participantView = participantView === 'nom' ? 'game' : 'nom';
+          renderParticipant();
+        }
         if (action === "disp-mode") setDisplayMode(actionButton.dataset.mode, displayChampion);
         if (action === "disp-champion") setDisplayMode("champion", actionButton.dataset.name);
+        if (action === "open-text-vote") openTextVote();
+        if (action === "close-text-vote") closeTextVote();
+        if (action === "publish-candidates") publishCandidates();
+        if (action === "ai-classify") aiReclassify();
+        if (action === "save-openai-key") {
+          const input = document.getElementById('openai-key-input');
+          const key = (input?.value || '').trim();
+          if (!key) { alert('請輸入 API Key'); return; }
+          openAiKey = key;
+          localStorage.setItem('openai_key', key);
+          gamePanelSignature = '';
+          updateGamePanel();
+        }
         if (action === "apply-template") applyTemplate(actionButton.dataset.templateId);
         if (action === "edit-template") {
           editingTemplateId = actionButton.dataset.templateId;
@@ -2282,9 +2649,29 @@
           const p2 = document.getElementById("edit-p2")?.value.trim();
           updateRound(roundId, label, p1, p2);
         }
+        if (event.target.id === "tv-settings-form") {
+          event.preventDefault();
+          openTextVote();
+        }
+        if (event.target.id === "nom-form") {
+          event.preventDefault();
+          const v0 = (document.getElementById('nom-input-0')?.value || '').trim();
+          const v1 = (document.getElementById('nom-input-1')?.value || '').trim();
+          if (!v0) return;
+          submitNomination(0, v0);
+          if (v1) submitNomination(1, v1);
+        }
         if (event.target.id === "join-form") {
           event.preventDefault();
           joinParticipant();
+        }
+      });
+
+      document.addEventListener("change", (event) => {
+        const sel = event.target.closest(".tv-merge-select");
+        if (sel && sel.value) {
+          mergeTextVoteGroups(sel.dataset.source, sel.value);
+          sel.value = '';
         }
       });
 
@@ -2340,6 +2727,20 @@
         // 只更新場次 Tab，不重繪整個畫面
         setupPanelSignature = "";
         if (getMode() !== "display" && getMode() !== "join") updateSetupPanel();
+      });
+
+      db.ref("/textVote").on("value", (snap) => {
+        textVoteData = snap.val() || null;
+        computeTextVoteGroups();
+        gamePanelSignature = "";
+        render();
+      });
+
+      db.ref("/textVoteEntries").on("value", (snap) => {
+        textVoteEntries = snap.val() || {};
+        computeTextVoteGroups();
+        gamePanelSignature = "";
+        render();
       });
     })();
   </script>
