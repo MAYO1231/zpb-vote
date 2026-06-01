@@ -1183,10 +1183,9 @@
       }
 
       async function openTextVote() {
-        const q = (document.getElementById('tv-question-input') || {}).value;
-        const m = (document.getElementById('tv-max-input') || {}).value;
-        const question = (q && q.trim()) || '請提名想參加比賽的人';
-        const maxPerPerson = parseInt(m) || 2;
+        const qEl = document.getElementById('tv-question-input');
+        const question = (qEl && qEl.value.trim()) || '請提名想參加比賽的人';
+        const maxPerPerson = 2;
         await db.ref('/textVote').set({ phase: 'open', question, maxPerPerson, merges: {} });
       }
 
@@ -1938,6 +1937,10 @@
               </div>
               ${textVoteHostHTML()}
             `;
+          }
+
+          if (!textVoteData && game.phase !== 'setup') {
+            openTextVote();
           }
         }
 
