@@ -831,7 +831,7 @@
       let hostTab = "setup";
       let hostMounted = false;
       let participantMounted = false;
-      let participantName = getNameParam();
+      let participantName = localStorage.getItem('participant-name') || "";
       let gamePanelSignature = "";
       let setupPanelSignature = "";
       let voteChart = null;
@@ -2373,9 +2373,16 @@
         app.style.background = "";
         if (dustRaf) { cancelAnimationFrame(dustRaf); dustRaf = null; }
         destroyVoteChart();
-        participantName = getNameParam();
+        participantName = localStorage.getItem('participant-name') || "";
 
         if (!participantName) {
+          // URL 帶了名字但此裝置沒有登入紀錄 → 清掉 URL 名字，顯示登入頁
+          const urlName = new URLSearchParams(location.search).get("name");
+          if (urlName) {
+            const url = new URL(location.href);
+            url.searchParams.delete("name");
+            history.replaceState({}, "", url.toString());
+          }
           if (!participantMounted || !document.getElementById("join-name")) {
             participantMounted = true;
             app.innerHTML = `
@@ -2722,6 +2729,7 @@
         }
         await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now() });
         participantName = name;
+        localStorage.setItem('participant-name', name);
         pushNameToURL(name);
         renderParticipant();
       }
@@ -2878,7 +2886,7 @@
       });
 
       window.addEventListener("popstate", () => {
-        participantName = getNameParam();
+        participantName = localStorage.getItem('participant-name') || "";
         hostMounted = false;
         participantMounted = false;
         render();
