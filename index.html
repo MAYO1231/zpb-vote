@@ -2758,6 +2758,10 @@
           alert("名字不能包含 . # $ / [ ]");
           return;
         }
+        if (participants.some(p => p.name === name)) {
+          alert(`「${name}」已被其他人使用，請換個名字`);
+          return;
+        }
         await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now() });
         participantName = name;
         localStorage.setItem('participant-name', name);
@@ -2780,6 +2784,7 @@
         newName = newName.trim();
         if (!newName || newName === oldName) { participantRenaming = false; renderParticipant(); return; }
         if (!firebaseKeyIsValid(newName)) { alert("名字不能包含 . # $ / [ ]"); return; }
+        if (participants.some(p => p.name === newName)) { alert(`「${newName}」已被其他人使用，請換個名字`); return; }
 
         const writes = {};
         writes[`/participants/${newName}`] = { name: newName, joinedAt: Date.now() };
