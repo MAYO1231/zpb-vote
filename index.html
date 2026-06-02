@@ -2759,8 +2759,7 @@
           return;
         }
         if (participants.some(p => p.name === name)) {
-          alert(`「${name}」已被其他人使用，請換個名字`);
-          return;
+          if (!confirm(`「${name}」已有人使用。\n如果是你要重新登入，請按確定；否則請換個名字。`)) return;
         }
         await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now() });
         participantName = name;
@@ -2770,14 +2769,12 @@
       }
 
       function logoutParticipant() {
-        const oldName = participantName;
         localStorage.removeItem('participant-name');
         participantName = "";
         participantRenaming = false;
         const url = new URL(location.href);
         url.searchParams.delete("name");
         history.replaceState({}, "", url.toString());
-        if (oldName && db) db.ref(`/participants/${oldName}`).remove();
         renderParticipant();
       }
 
