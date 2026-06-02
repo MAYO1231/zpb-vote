@@ -2770,12 +2770,14 @@
       }
 
       function logoutParticipant() {
+        const oldName = participantName;
         localStorage.removeItem('participant-name');
         participantName = "";
         participantRenaming = false;
         const url = new URL(location.href);
         url.searchParams.delete("name");
         history.replaceState({}, "", url.toString());
+        if (oldName && db) db.ref(`/participants/${oldName}`).remove();
         renderParticipant();
       }
 
