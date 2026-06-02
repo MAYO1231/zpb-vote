@@ -597,8 +597,8 @@
       text-shadow: 0 0 60px rgba(240,200,80,0.4), 0 0 120px rgba(240,200,80,0.2);
     }
     .disp-subtitle {
-      font-size: clamp(13px,1.6vw,28px); font-weight: 400;
-      letter-spacing: 0.18em; color: rgba(240,200,80,0.42);
+      font-size: clamp(24px,4vw,64px); font-weight: 700;
+      letter-spacing: 0.18em; color: rgba(240,200,80,0.52);
     }
     .disp-divider {
       width: 60px; height: 1px; margin: clamp(6px,1.2vh,18px) auto;
@@ -1511,7 +1511,7 @@
             <div class="cath-vignette"></div>
             <canvas id="disp-dust" class="disp-dust"></canvas>
           </div>
-          <div class="disp-verse">你的杖，你的杆，都安慰我</div>`;
+          <div class="disp-verse">都擊打我</div>`;
       }
 
       function renderDisplay() {
@@ -1540,7 +1540,8 @@
             <div class="disp-root fade-in">
               ${dispBgHTML(false)}
               <div class="disp-content">
-                <div class="disp-main-title">你的杖，你的杆，都擊打我</div>
+                <div class="disp-main-title">你的杖 你的杆</div>
+                <div class="disp-subtitle">都擊打我</div>
                 <div class="disp-divider"></div>
                 <div class="disp-join-label">掃描加入・一起見證</div>
                 <div class="disp-qr-wrap" id="disp-qr-box"></div>
@@ -1683,7 +1684,7 @@
             <div class="disp-root fade-in">
               ${dispBgHTML(false)}
               <div class="disp-content">
-                <div class="disp-main-title">你的杖，你的杆</div>
+                <div class="disp-main-title">你的杖 你的杆</div>
                 <div class="disp-subtitle">都擊打我</div>
                 <div class="disp-divider"></div>
                 <div class="disp-join-label">掃描加入・一起見證</div>
