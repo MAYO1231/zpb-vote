@@ -795,6 +795,29 @@
     .disp-nom-bar-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.5s ease; }
     .disp-nom-count { font-size: clamp(20px, 3vw, 36px); font-weight: 900; color: var(--gold); }
     .disp-nom-unit { font-size: 14px; color: var(--muted); margin-left: 3px; }
+
+    /* ── Word cloud (即時文字雲) ─────────────────────────────────── */
+    .disp-cloud {
+      position: relative; width: 100%; height: 62vh;
+      max-width: 1180px; overflow: hidden;
+    }
+    .disp-cloud-word {
+      position: absolute;
+      font-family: 'Noto Serif TC', serif; line-height: 1.1;
+      white-space: nowrap; cursor: default;
+      text-shadow: 0 2px 22px rgba(0,0,0,0.55);
+      transition: left .55s cubic-bezier(.25,.46,.45,.94),
+                  top  .55s cubic-bezier(.25,.46,.45,.94),
+                  font-size .7s cubic-bezier(.34,1.56,.64,1),
+                  color .6s ease, font-weight .6s ease, opacity .45s ease;
+    }
+    .disp-cloud-word.is-top { text-shadow: 0 0 26px rgba(232,184,75,0.45), 0 2px 22px rgba(0,0,0,0.55); }
+    .disp-cloud-word.pop { animation: cloudPop .6s cubic-bezier(.34,1.56,.64,1) forwards; }
+    .disp-cloud-word.leaving { opacity: 0 !important; pointer-events: none; }
+    @keyframes cloudPop {
+      from { transform: scale(0.15); opacity: 0; }
+      to   { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -1053,6 +1076,155 @@
         const rawGroups = localGroupEntries(entries);
         const merges = textVoteData && textVoteData.merges ? textVoteData.merges : {};
         textVoteGroups = applyMerges(rawGroups, merges).sort((a, b) => b.count - a.count);
+      }
+
+      // ── Word cloud (即時文字雲) ──────────────────────────────────
+      const CLOUD_PALETTE = ['#e8b84b', '#d98c8c', '#7bbf97', '#e8e4dc', '#c9a84b', '#cdb86a'];
+      function cloudHash(str) {
+        let h = 0;
+        for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+        return h;
+      }
+      // 依票數比例算字級／顏色／粗細，build 與 in-place update 共用，確保一致
+      // n = 不同人選數量：人少時整體偏大，人越多最小越小、最大越大（拉開差距）
+      function cloudStyleFor(count, minC, maxC, canonical, isTop, n) {
+        const denom = maxC - minC;
+        let t = denom > 0 ? (count - minC) / denom : 1;
+        t = Math.sqrt(Math.max(0, Math.min(1, t)));   // sqrt easing，差距更柔和
+        const maxSize = Math.min(5.5 + n * 0.12, 9);   // rem：人越多上限越大（封頂 9）
+        const minSize = Math.max(4.5 - n * 0.28, 1.2); // rem：人越多下限越小（地板 1.2）
+        const size = (minSize + t * (maxSize - minSize)).toFixed(2);
+        const weight = 400 + Math.round(t * 500);      // 400 → 900
+        const color = isTop ? '#e8b84b' : CLOUD_PALETTE[cloudHash(canonical) % CLOUD_PALETTE.length];
+        const opacity = (0.55 + t * 0.45).toFixed(2);
+        return { size, weight, color, opacity };
+      }
+      function paintCloudWord(span, g, minC, maxC, isTop, n) {
+        const s = cloudStyleFor(g.count, minC, maxC, g.canonical, isTop, n);
+        span.style.fontSize = s.size + 'rem';
+        span.style.fontWeight = s.weight;
+        span.style.color = s.color;
+        span.style.opacity = s.opacity;
+        span.classList.toggle('is-top', isTop);
+      }
+
+      // 螺旋碰撞擺放：最大字從中心開始，其餘往外螺旋找空隙
+      function layoutCloud(cloudEl) {
+        const W = cloudEl.offsetWidth;
+        const H = cloudEl.offsetHeight;
+        if (!W || !H) return;
+        const CELL = 3, PAD_X = 7, PAD_Y = 5;
+        const gcols = Math.ceil(W / CELL);
+        const grows = Math.ceil(H / CELL);
+        const grid = new Uint8Array(gcols * grows);
+
+        function fits(x, y, w, h) {
+          if (x < 0 || y < 0 || x + w > W || y + h > H) return false;
+          const c0 = Math.floor(x / CELL), c1 = Math.ceil((x + w) / CELL);
+          const r0 = Math.floor(y / CELL), r1 = Math.ceil((y + h) / CELL);
+          for (let r = r0; r < r1; r++)
+            for (let c = c0; c < c1; c++)
+              if (grid[r * gcols + c]) return false;
+          return true;
+        }
+        function mark(x, y, w, h) {
+          const c0 = Math.max(0, Math.floor(x / CELL)), c1 = Math.min(gcols, Math.ceil((x + w) / CELL));
+          const r0 = Math.max(0, Math.floor(y / CELL)), r1 = Math.min(grows, Math.ceil((y + h) / CELL));
+          for (let r = r0; r < r1; r++)
+            for (let c = c0; c < c1; c++)
+              grid[r * gcols + c] = 1;
+        }
+
+        const cx = W / 2, cy = H / 2;
+        const aspect = W / H;
+        // 依字級大小排序：最大的先放（自然落在中心）
+        const spans = Array.from(cloudEl.querySelectorAll('.disp-cloud-word:not(.leaving)'))
+          .sort((a, b) => parseFloat(b.style.fontSize) - parseFloat(a.style.fontSize));
+
+        for (const span of spans) {
+          const sw = span.offsetWidth + PAD_X * 2;
+          const sh = span.offsetHeight + PAD_Y * 2;
+          let placed = false;
+          for (let step = 0; step < 4000; step++) {
+            const angle = step * 0.2;
+            const r = step * 0.75;
+            const tx = cx + r * Math.cos(angle) * aspect - sw / 2;
+            const ty = cy + r * Math.sin(angle) - sh / 2;
+            if (fits(tx, ty, sw, sh)) {
+              mark(tx, ty, sw, sh);
+              span.style.left = (tx + PAD_X) + 'px';
+              span.style.top  = (ty + PAD_Y) + 'px';
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) { span.style.left = '-999px'; span.style.top = '-999px'; }
+        }
+      }
+
+      // 即時更新：改字級 + 新詞加入 → 重新螺旋排版（CSS transition 讓位置平滑移動）
+      function updateCloudWords(cloudEl) {
+        const waiting = cloudEl.querySelector('.disp-waiting-text');
+        if (waiting) waiting.remove();
+        const groups = textVoteGroups;
+        const n = groups.length;
+        const maxC = groups[0] ? groups[0].count : 1;
+        const minC = groups[n - 1] ? groups[n - 1].count : 1;
+        const desired = {};
+        groups.forEach((g, i) => { desired[g.canonical] = { g, isTop: i === 0 }; });
+
+        // 更新或移除既有節點
+        cloudEl.querySelectorAll('.disp-cloud-word').forEach(span => {
+          const key = span.dataset.word;
+          if (desired[key]) {
+            paintCloudWord(span, desired[key].g, minC, maxC, desired[key].isTop, n);
+            desired[key].done = true;
+          } else if (!span.classList.contains('leaving')) {
+            span.classList.add('leaving');
+            setTimeout(() => span.remove(), 450);
+          }
+        });
+        // 新增節點（先隱藏，等排版後再 pop 進場）
+        const newSpans = [];
+        for (const key in desired) {
+          if (desired[key].done) continue;
+          const { g, isTop } = desired[key];
+          const span = document.createElement('span');
+          span.className = 'disp-cloud-word';
+          span.dataset.word = g.canonical;
+          span.textContent = g.canonical;
+          span.style.opacity = '0';
+          span.style.left = cx_approx(cloudEl) + 'px';
+          span.style.top  = cy_approx(cloudEl) + 'px';
+          cloudEl.appendChild(span);
+          paintCloudWord(span, g, minC, maxC, isTop, n);
+          newSpans.push(span);
+        }
+        // 重新排版，然後 pop 新詞進場
+        requestAnimationFrame(() => {
+          layoutCloud(cloudEl);
+          newSpans.forEach(span => {
+            void span.offsetWidth;
+            span.classList.add('pop');
+            span.addEventListener('animationend', () => span.classList.remove('pop'), { once: true });
+          });
+        });
+      }
+      function cx_approx(el) { return (el.offsetWidth  || 500) / 2; }
+      function cy_approx(el) { return (el.offsetHeight || 300) / 2; }
+
+      // 首次建立雲：輸出 opacity:0 的 span，由 renderDisplay 呼叫 layoutCloud 後淡入
+      function cloudHTML() {
+        const groups = textVoteGroups;
+        const n = groups.length;
+        const maxC = groups[0] ? groups[0].count : 1;
+        const minC = n ? groups[n - 1].count : 1;
+        return groups.map(g => {
+          const isTop = g === groups[0];
+          const s = cloudStyleFor(g.count, minC, maxC, g.canonical, isTop, n);
+          return `<span class="disp-cloud-word" data-word="${escapeHTML(g.canonical)}"
+            style="font-size:${s.size}rem;font-weight:${s.weight};color:${s.color};opacity:0;left:50%;top:50%;">${escapeHTML(g.canonical)}</span>`;
+        }).join('');
       }
 
       function nominationMax() {
@@ -1356,6 +1528,20 @@
       }
 
       function renderDisplay() {
+        // 文字雲原地更新：若已在文字雲畫面且仍在收集中，只 patch 文字（保留塵埃動畫＋平滑長大）
+        if (displayMode === "textVote") {
+          const cloudEl = document.getElementById("disp-cloud");
+          const tvPhase = textVoteData && textVoteData.phase;
+          if (cloudEl && tvPhase !== "closed") {
+            computeTextVoteGroups();
+            if (textVoteGroups.length > 0) {
+              const titleEl = document.getElementById("disp-cloud-title");
+              if (titleEl) titleEl.textContent = "📝 " + ((textVoteData && textVoteData.question) || "提名投票");
+              updateCloudWords(cloudEl);
+              return;
+            }
+          }
+        }
         hostMounted = false;
         participantMounted = false;
         if (dustRaf) { cancelAnimationFrame(dustRaf); dustRaf = null; }
@@ -1444,31 +1630,44 @@
                   <div><span class="disp-nom-count">${count}</span><span class="disp-nom-unit">票</span></div>
                 </div>`;
             }).join('');
-          } else if (textVoteGroups.length === 0) {
-            listItems = `<div class="disp-waiting-text">等待提名中...</div>`;
-          } else {
-            const maxC = textVoteGroups[0].count || 1;
-            listItems = textVoteGroups.slice(0, 8).map((g, i) => `
-              <div class="disp-nom-row ${i === 0 ? 'is-top' : ''}">
-                <div class="disp-nom-medal">${rankLabel(i + 1)}</div>
-                <div class="disp-nom-name-wrap">
-                  <div class="disp-nom-name">${escapeHTML(g.canonical)}</div>
-                  <div class="disp-nom-bar-wrap">
-                    <div class="disp-nom-bar-fill" style="width:${Math.round(g.count / maxC * 100)}%"></div>
-                  </div>
+            app.innerHTML = `
+              <div class="disp-root fade-in">
+                ${dispBgHTML(false)}
+                <div class="disp-content">
+                  <div class="disp-nom-title">📝 ${escapeHTML(tvQuestion)}</div>
+                  <div class="disp-nom-list">${listItems}</div>
                 </div>
-                <div><span class="disp-nom-count">${g.count}</span><span class="disp-nom-unit">票</span></div>
-              </div>`).join('');
+              </div>`;
+            startDisplayDustMotes();
+            return;
+          }
+          // 收集中 → 即時文字雲
+          let cloudInner;
+          if (textVoteGroups.length === 0) {
+            cloudInner = `<div class="disp-waiting-text">等待提名中...</div>`;
+          } else {
+            cloudInner = cloudHTML();
           }
           app.innerHTML = `
             <div class="disp-root fade-in">
               ${dispBgHTML(false)}
               <div class="disp-content">
-                <div class="disp-nom-title">📝 ${escapeHTML(tvQuestion)}</div>
-                <div class="disp-nom-list">${listItems}</div>
+                <div class="disp-nom-title" id="disp-cloud-title">📝 ${escapeHTML(tvQuestion)}</div>
+                <div class="disp-cloud" id="disp-cloud">${cloudInner}</div>
               </div>
             </div>`;
           startDisplayDustMotes();
+          // 螺旋排版（需等 DOM render 後才能量測寬度）
+          requestAnimationFrame(() => {
+            const cloud = document.getElementById('disp-cloud');
+            if (!cloud) return;
+            layoutCloud(cloud);
+            cloud.querySelectorAll('.disp-cloud-word').forEach(span => {
+              void span.offsetWidth;
+              span.classList.add('pop');
+              span.addEventListener('animationend', () => span.classList.remove('pop'), { once: true });
+            });
+          });
           return;
         }
 
