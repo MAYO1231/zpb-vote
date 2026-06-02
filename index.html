@@ -2768,7 +2768,6 @@
           if (!confirm(`「${name}」已有人使用。\n如果是你要重新登入，請按確定；否則請換個名字。`)) return;
         }
         await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now(), online: true });
-        db.ref(`/participants/${name}/online`).onDisconnect().set(false);
         participantName = name;
         localStorage.setItem('participant-name', name);
         pushNameToURL(name);
@@ -2777,7 +2776,7 @@
 
       function logoutParticipant() {
         if (participantName && db) {
-          db.ref(`/participants/${participantName}/online`).cancelOnDisconnect();
+          db.ref(`/participants/${participantName}/online`).onDisconnect().cancel();
           db.ref(`/participants/${participantName}/online`).set(false);
         }
         localStorage.removeItem('participant-name');
@@ -2796,7 +2795,7 @@
         if (!firebaseKeyIsValid(newName)) { alert("名字不能包含 . # $ / [ ]"); return; }
         if (participants.some(p => p.name === newName)) { alert(`「${newName}」已被其他人使用，請換個名字`); return; }
 
-        db.ref(`/participants/${oldName}/online`).cancelOnDisconnect();
+        db.ref(`/participants/${oldName}/online`).onDisconnect().cancel();
 
         const writes = {};
         writes[`/participants/${newName}`] = { name: newName, joinedAt: Date.now(), online: true };
@@ -2817,7 +2816,6 @@
         });
 
         await db.ref('/').update(writes);
-        db.ref(`/participants/${newName}/online`).onDisconnect().set(false);
         localStorage.setItem('participant-name', newName);
         participantName = newName;
         participantRenaming = false;
@@ -3060,11 +3058,13 @@
         render();
       });
 
-      // 若 localStorage 有名字（重整/恢復登入），補上 online 狀態
-      if (participantName && getMode() === "join") {
-        db.ref(`/participants/${participantName}/online`).set(true);
+      // Presence：每次連線建立時重新設 online:true + onDisconnect
+      // 涵蓋：初次登入、重整、手機網路切換重連等所有情況
+      db.ref('.info/connected').on('value', (snap) => {
+        if (!snap.val() || !participantName || getMode() !== 'join') return;
         db.ref(`/participants/${participantName}/online`).onDisconnect().set(false);
-      }
+        db.ref(`/participants/${participantName}/online`).set(true);
+      });
     })();
   </script>
 </body>
