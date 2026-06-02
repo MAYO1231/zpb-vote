@@ -637,56 +637,43 @@
       font-weight: 700; color: rgba(200,200,220,0.28); letter-spacing: 0.1em;
     }
 
-    /* voting grid */
-    .disp-vote-grid {
-      display: grid; grid-template-columns: 1fr clamp(36px,5.5vw,72px) 1fr;
-      align-items: center; width: 100%; max-width: min(1400px,96vw);
+    /* voting progress bar */
+    .disp-bar-track {
+      width: 100%; max-width: min(1200px,94vw);
+      height: clamp(22px,4vh,56px); border-radius: clamp(6px,0.8vw,14px);
+      background: rgba(255,255,255,0.05); overflow: hidden; display: flex;
     }
-    .disp-vote-card {
-      display: flex; flex-direction: column; align-items: center;
-      gap: clamp(6px,1.4vh,18px);
-      padding: clamp(18px,2.8vw,52px) clamp(14px,2.2vw,40px);
-      border-radius: clamp(10px,1.4vw,20px);
+    .disp-bar-p1-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #c8a438, #f0c96e);
+      box-shadow: 6px 0 32px rgba(240,200,80,0.65);
+      transition: width 1s cubic-bezier(0.34,1.1,0.64,1);
+      border-radius: clamp(6px,0.8vw,14px) 0 0 clamp(6px,0.8vw,14px);
     }
-    .disp-vc-p1 { background: rgba(240,200,80,0.05); border: 1px solid rgba(240,200,80,0.18); }
-    .disp-vc-p2 { background: rgba(220,100,80,0.05); border: 1px solid rgba(220,100,80,0.18); }
-    .disp-vc-name {
-      font-family: "Noto Serif TC", serif; font-size: clamp(22px,4.5vw,70px);
-      font-weight: 900; line-height: 1.1;
+    .disp-bar-p2-fill {
+      flex: 1; height: 100%;
+      background: linear-gradient(90deg, #c94040, #e07060);
+      box-shadow: -6px 0 32px rgba(220,100,80,0.65);
+      border-radius: 0 clamp(6px,0.8vw,14px) clamp(6px,0.8vw,14px) 0;
     }
-    .disp-vc-p1 .disp-vc-name { color: #f0c96e; }
-    .disp-vc-p2 .disp-vc-name { color: #e07060; }
-    .disp-vc-count {
-      font-family: "Noto Serif TC", serif; font-size: clamp(60px,12vw,155px);
-      font-weight: 900; line-height: 0.9; animation: glowIn 0.4s ease forwards;
+    .disp-bar-track.no-votes .disp-bar-p1-fill,
+    .disp-bar-track.no-votes .disp-bar-p2-fill {
+      background: rgba(255,255,255,0.1); box-shadow: none;
     }
-    .disp-vc-p1 .disp-vc-count { color: #f0c96e; }
-    .disp-vc-p2 .disp-vc-count { color: #e07060; }
-    .disp-vc-bar-wrap {
-      width: 100%; height: clamp(5px,0.55vh,9px); border-radius: 4px;
-      background: rgba(255,255,255,0.08); overflow: hidden;
+    .disp-stats-row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      width: 100%; max-width: min(1200px,94vw);
+      gap: clamp(8px,2vw,24px);
     }
-    .disp-vc-bar {
-      height: 100%; border-radius: 4px;
-      transition: width 0.8s cubic-bezier(0.34,1.2,0.64,1);
+    .disp-stat {
+      font-size: clamp(13px,1.8vw,28px); font-weight: 700;
+      letter-spacing: 0.05em; flex: 1;
     }
-    .disp-vc-bar-p1 { background: #f0c96e; box-shadow: 0 0 14px rgba(240,200,80,0.6); }
-    .disp-vc-bar-p2 { background: #e07060; box-shadow: 0 0 14px rgba(220,100,80,0.6); }
-    .disp-vc-pct {
-      font-size: clamp(13px,1.5vw,24px); font-weight: 700;
-      color: rgba(200,200,220,0.48); letter-spacing: 0.08em;
-    }
-    .disp-vote-vs-col {
-      display: flex; flex-direction: column; align-items: center;
-      gap: clamp(6px,1.5vh,18px);
-    }
-    .disp-vs-pill {
-      font-family: "Noto Serif TC", serif; font-size: clamp(13px,1.6vw,26px);
-      font-weight: 900; color: rgba(200,200,220,0.2); letter-spacing: 0.15em;
-    }
-    .disp-voter-count {
-      font-size: clamp(10px,1.2vw,17px); color: rgba(200,200,220,0.36);
-      letter-spacing: 0.06em; line-height: 1.6; writing-mode: vertical-rl;
+    .disp-stat-p1 { color: #f0c96e; }
+    .disp-stat-p2 { color: #e07060; text-align: right; }
+    .disp-stat-center {
+      font-size: clamp(11px,1.2vw,18px); color: rgba(200,200,220,0.38);
+      letter-spacing: 0.08em; text-align: center; flex-shrink: 0;
     }
 
     /* winner */
@@ -1554,7 +1541,6 @@
               ${dispBgHTML(false)}
               <div class="disp-content">
                 <div class="disp-main-title">你的杖，你的杆，都擊打我</div>
-                <div class="disp-subtitle">盲眼劍客猜勝負</div>
                 <div class="disp-divider"></div>
                 <div class="disp-join-label">掃描加入・一起見證</div>
                 <div class="disp-qr-wrap" id="disp-qr-box"></div>
@@ -1698,7 +1684,7 @@
               ${dispBgHTML(false)}
               <div class="disp-content">
                 <div class="disp-main-title">你的杖，你的杆</div>
-                <div class="disp-subtitle">都擊打我・盲眼劍客猜勝負</div>
+                <div class="disp-subtitle">都擊打我</div>
                 <div class="disp-divider"></div>
                 <div class="disp-join-label">掃描加入・一起見證</div>
                 <div class="disp-qr-wrap" id="disp-qr-box"></div>
@@ -1796,30 +1782,26 @@
             ${dispBgHTML(false)}
             <div class="disp-content">
               <div class="disp-round-label">${escapeHTML(round.label)}</div>
-              <div class="disp-vote-grid">
-                <div class="disp-vote-card disp-vc-p1">
-                  <div class="disp-vc-name">${escapeHTML(round.p1)}</div>
-                  <div class="disp-vc-count">${p1Votes}</div>
-                  <div class="disp-vc-bar-wrap">
-                    <div class="disp-vc-bar disp-vc-bar-p1" style="width:${p1Pct}%"></div>
-                  </div>
-                  <div class="disp-vc-pct">${total > 0 ? p1Pct + "%" : "—"}</div>
-                </div>
-                <div class="disp-vote-vs-col">
-                  <div class="disp-vs-pill">VS</div>
-                  <div class="disp-voter-count">${roundPredictions.length} / ${participants.length} 人已投票</div>
-                </div>
-                <div class="disp-vote-card disp-vc-p2">
-                  <div class="disp-vc-name">${escapeHTML(round.p2)}</div>
-                  <div class="disp-vc-count">${p2Votes}</div>
-                  <div class="disp-vc-bar-wrap">
-                    <div class="disp-vc-bar disp-vc-bar-p2" style="width:${p2Pct}%"></div>
-                  </div>
-                  <div class="disp-vc-pct">${total > 0 ? p2Pct + "%" : "—"}</div>
-                </div>
+              <div class="disp-versus-row">
+                <div class="disp-player-name disp-p1-name">${escapeHTML(round.p1)}</div>
+                <div class="disp-vs-text">vs</div>
+                <div class="disp-player-name disp-p2-name">${escapeHTML(round.p2)}</div>
+              </div>
+              <div class="disp-bar-track${total === 0 ? ' no-votes' : ''}">
+                <div class="disp-bar-p1-fill" id="disp-bar-p1" style="width:0%"></div>
+                <div class="disp-bar-p2-fill"></div>
+              </div>
+              <div class="disp-stats-row">
+                <div class="disp-stat disp-stat-p1">${total > 0 ? `${p1Votes} 票・${p1Pct}%` : '—'}</div>
+                <div class="disp-stat-center">${roundPredictions.length} / ${participants.length} 人已投票</div>
+                <div class="disp-stat disp-stat-p2">${total > 0 ? `${p2Pct}%・${p2Votes} 票` : '—'}</div>
               </div>
             </div>
           </div>`;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const b = document.getElementById('disp-bar-p1');
+          if (b) b.style.width = (total > 0 ? p1Pct : 50) + '%';
+        }));
         startDisplayDustMotes();
       }
 
@@ -1870,7 +1852,7 @@
           setupPanelSignature = "";
           app.innerHTML = `
             <div class="host-header">
-              <div class="brand">你的杖，你的杆，都擊打我<small>盲眼劍客猜勝負</small></div>
+              <div class="brand">你的杖，你的杆，都擊打我</div>
               <button class="reset-btn" type="button" data-action="reset">重置</button>
             </div>
             <div class="tabs">
