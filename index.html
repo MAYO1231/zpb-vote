@@ -832,6 +832,7 @@
       let hostMounted = false;
       let participantMounted = false;
       let participantName = localStorage.getItem('participant-name') || "";
+      let participantRenaming = false;
       let gamePanelSignature = "";
       let setupPanelSignature = "";
       let voteChart = null;
@@ -2257,9 +2258,14 @@
                   return `
                     <div class="person-item">
                       <div class="name">${escapeHTML(person.name)}</div>
-                      ${round && round.status === "open"
-                        ? `<div class="score">${voted ? "✓ 已投票" : "○ 待投票"}</div>`
-                        : ""}
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        ${round && round.status === "open"
+                          ? `<div class="score">${voted ? "✓ 已投票" : "○ 待投票"}</div>`
+                          : ""}
+                        <button class="btn ghost" type="button" data-action="remove-participant"
+                          data-name="${escapeHTML(person.name)}"
+                          style="font-size:11px;padding:2px 7px;min-height:24px;color:var(--red);">✕</button>
+                      </div>
                     </div>
                   `;
                 }).join("")}
@@ -2402,6 +2408,27 @@
           return;
         }
 
+        // 改名模式：顯示全螢幕改名表單
+        if (participantRenaming) {
+          participantMounted = true;
+          app.innerHTML = `
+            <div class="participant-page fade-in">
+              <main class="participant-main">
+                <form id="rename-form" class="card join-card stack">
+                  <h1 style="font-size:20px;letter-spacing:0.04em;margin:0 0 4px;">改名字</h1>
+                  <p style="font-size:13px;color:var(--muted);margin:0 0 16px;">目前：${escapeHTML(participantName)}</p>
+                  <input id="rename-input" type="text" placeholder="輸入新名字" autocomplete="off"
+                    value="${escapeHTML(participantName)}">
+                  <button class="btn gold full" type="submit">確認改名 →</button>
+                  <button class="btn ghost full" type="button" data-action="cancel-rename">取消</button>
+                </form>
+              </main>
+            </div>`;
+          const inp = document.getElementById("rename-input");
+          if (inp) { inp.focus(); inp.select(); }
+          return;
+        }
+
         participantMounted = true;
         const round = getCurrentRound();
         const myCorrect = correctCountFor(participantName);
@@ -2425,8 +2452,12 @@
           <div class="participant-page fade-in">
             <header class="participant-header">
               <div class="brand">你的杖，你的杆，都擊打我<small>${escapeHTML(participantName)}</small></div>
-              <div style="display:flex;align-items:center;gap:8px;">
+              <div style="display:flex;align-items:center;gap:6px;">
                 ${nomBtn}
+                <button class="btn ghost" type="button" data-action="start-rename"
+                  style="font-size:11px;padding:3px 8px;min-height:26px;">改名</button>
+                <button class="btn ghost" type="button" data-action="logout"
+                  style="font-size:11px;padding:3px 8px;min-height:26px;color:var(--muted);">登出</button>
                 <div class="score">${myCorrect}<span class="muted">/${totalClosed}</span></div>
               </div>
             </header>
@@ -2734,6 +2765,55 @@
         renderParticipant();
       }
 
+      function logoutParticipant() {
+        localStorage.removeItem('participant-name');
+        participantName = "";
+        participantRenaming = false;
+        const url = new URL(location.href);
+        url.searchParams.delete("name");
+        history.replaceState({}, "", url.toString());
+        renderParticipant();
+      }
+
+      async function renameParticipant(newName) {
+        const oldName = participantName;
+        newName = newName.trim();
+        if (!newName || newName === oldName) { participantRenaming = false; renderParticipant(); return; }
+        if (!firebaseKeyIsValid(newName)) { alert("名字不能包含 . # $ / [ ]"); return; }
+
+        const writes = {};
+        writes[`/participants/${newName}`] = { name: newName, joinedAt: Date.now() };
+        writes[`/participants/${oldName}`] = null;
+
+        // 遷移投票紀錄
+        predictions.filter(p => p.name === oldName).forEach(p => {
+          writes[`/predictions/${newName}_${p.roundId}`] = { ...p, name: newName };
+          writes[`/predictions/${oldName}_${p.roundId}`] = null;
+        });
+
+        // 遷移文字提名
+        Object.keys(textVoteEntries).filter(k => k.startsWith(oldName + '_')).forEach(k => {
+          const entry = textVoteEntries[k];
+          const slot = k.slice(oldName.length + 1);
+          writes[`/textVoteEntries/${newName}_${slot}`] = { ...entry, voter: newName };
+          writes[`/textVoteEntries/${k}`] = null;
+        });
+
+        await db.ref('/').update(writes);
+        localStorage.setItem('participant-name', newName);
+        participantName = newName;
+        participantRenaming = false;
+        pushNameToURL(newName);
+        renderParticipant();
+      }
+
+      async function removeParticipantByHost(name) {
+        if (!confirm(`確定移除「${name}」？\n（不會影響已投票紀錄）`)) return;
+        const writes = {};
+        writes[`/participants/${name}`] = null;
+        await db.ref('/').update(writes);
+      }
+
       async function vote(pick) {
         const round = getCurrentRound();
         if (!round || round.status !== "open" || !participantName) return;
@@ -2781,6 +2861,10 @@
         if (action === "next-round") nextRound();
         if (action === "reset") resetGame();
         if (action === "vote") vote(actionButton.dataset.pick);
+        if (action === "logout") logoutParticipant();
+        if (action === "start-rename") { participantRenaming = true; renderParticipant(); }
+        if (action === "cancel-rename") { participantRenaming = false; renderParticipant(); }
+        if (action === "remove-participant") removeParticipantByHost(actionButton.dataset.name);
         if (action === "nom-view") {
           participantView = participantView === 'nom' ? 'game' : 'nom';
           renderParticipant();
@@ -2818,6 +2902,11 @@
       });
 
       document.addEventListener("submit", (event) => {
+        if (event.target.id === "rename-form") {
+          event.preventDefault();
+          const input = document.getElementById("rename-input");
+          renameParticipant(input ? input.value : "");
+        }
         if (event.target.id === "host-auth-form") {
           event.preventDefault();
           const input = document.getElementById("host-pass-input");
