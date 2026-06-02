@@ -2255,9 +2255,15 @@
                   const voted = round && round.status === "open"
                     ? predictions.some((prediction) => prediction.name === person.name && prediction.roundId === round.id)
                     : false;
+                  const onlineDot = person.online
+                    ? `<span title="在線" style="width:7px;height:7px;border-radius:50%;background:#2d7a4a;display:inline-block;flex-shrink:0;"></span>`
+                    : `<span title="離線" style="width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;opacity:0.45;"></span>`;
                   return `
                     <div class="person-item">
-                      <div class="name">${escapeHTML(person.name)}</div>
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        ${onlineDot}
+                        <div class="name">${escapeHTML(person.name)}</div>
+                      </div>
                       <div style="display:flex;align-items:center;gap:6px;">
                         ${round && round.status === "open"
                           ? `<div class="score">${voted ? "✓ 已投票" : "○ 待投票"}</div>`
@@ -2761,7 +2767,8 @@
         if (participants.some(p => p.name === name)) {
           if (!confirm(`「${name}」已有人使用。\n如果是你要重新登入，請按確定；否則請換個名字。`)) return;
         }
-        await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now() });
+        await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now(), online: true });
+        db.ref(`/participants/${name}/online`).onDisconnect().set(false);
         participantName = name;
         localStorage.setItem('participant-name', name);
         pushNameToURL(name);
@@ -2769,6 +2776,10 @@
       }
 
       function logoutParticipant() {
+        if (participantName && db) {
+          db.ref(`/participants/${participantName}/online`).cancelOnDisconnect();
+          db.ref(`/participants/${participantName}/online`).set(false);
+        }
         localStorage.removeItem('participant-name');
         participantName = "";
         participantRenaming = false;
@@ -2785,8 +2796,10 @@
         if (!firebaseKeyIsValid(newName)) { alert("名字不能包含 . # $ / [ ]"); return; }
         if (participants.some(p => p.name === newName)) { alert(`「${newName}」已被其他人使用，請換個名字`); return; }
 
+        db.ref(`/participants/${oldName}/online`).cancelOnDisconnect();
+
         const writes = {};
-        writes[`/participants/${newName}`] = { name: newName, joinedAt: Date.now() };
+        writes[`/participants/${newName}`] = { name: newName, joinedAt: Date.now(), online: true };
         writes[`/participants/${oldName}`] = null;
 
         // 遷移投票紀錄
@@ -2804,6 +2817,7 @@
         });
 
         await db.ref('/').update(writes);
+        db.ref(`/participants/${newName}/online`).onDisconnect().set(false);
         localStorage.setItem('participant-name', newName);
         participantName = newName;
         participantRenaming = false;
@@ -3045,6 +3059,12 @@
         gamePanelSignature = "";
         render();
       });
+
+      // 若 localStorage 有名字（重整/恢復登入），補上 online 狀態
+      if (participantName && getMode() === "join") {
+        db.ref(`/participants/${participantName}/online`).set(true);
+        db.ref(`/participants/${participantName}/online`).onDisconnect().set(false);
+      }
     })();
   </script>
 </body>
