@@ -2764,8 +2764,13 @@
           alert("名字不能包含 . # $ / [ ]");
           return;
         }
-        if (participants.some(p => p.name === name)) {
-          if (!confirm(`「${name}」已有人使用。\n如果是你要重新登入，請按確定；否則請換個名字。`)) return;
+        const existing = participants.find(p => p.name === name);
+        if (existing) {
+          if (existing.online) {
+            alert(`「${name}」目前已有人登入，請換個名字。`);
+            return;
+          }
+          if (!confirm(`「${name}」之前有登入紀錄，是否要重新登入？`)) return;
         }
         await db.ref(`/participants/${name}`).set({ name, joinedAt: Date.now(), online: true });
         participantName = name;
